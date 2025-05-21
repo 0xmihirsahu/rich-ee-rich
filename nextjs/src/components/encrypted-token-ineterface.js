@@ -84,7 +84,7 @@ const EncryptedTokenInterface = () => {
   return (
     <div className="flex items-center justify-center w-full">
       <div className="w-full">
-        <div className="w-full bg-gray-700/40 rounded-xl shadow-2xl border border-gray-700 overflow-hidden">
+        <div className="w-full bg-gray-700/40 rounded-none shadow-2xl border border-gray-700 overflow-hidden">
           <div className="p-6 space-y-4">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white flex items-center">

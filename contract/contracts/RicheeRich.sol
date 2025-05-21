@@ -40,7 +40,6 @@ contract RicheeRich is ReentrancyGuard {
 
         balances[msg.sender] = amount;
         hasSubmitted[msg.sender] = true;
-
         emit Submitted(msg.sender);
     }
 

@@ -5,14 +5,17 @@ import {
   getContract,
   parseEther,
   getAddress,
+  Abi,
+  decodeEventLog,
 } from "viem";
 import { HexString } from "@inco/js/dist/binary";
+// @ts-ignore
 import { Lightning } from "@inco/js/lite";
-import contractAbi from "../artifacts/contracts/MillionairesDilemma.sol/MillionairesDilemma.json";
+import contractAbi from "../artifacts/contracts/RicheeRich.sol/RicheeRich.json";
 
-describe("MillionairesDilemma Tests", function () {
+describe("RicheeRich Tests", function () {
   let contractAddress: Address;
-  let millionairesDilemma: any;
+  let richeeRich: any;
   let incoConfig: any;
   let reEncryptors: Record<string, any>;
 
@@ -33,16 +36,16 @@ describe("MillionairesDilemma Tests", function () {
       abi: contractAbi.abi,
       bytecode: contractAbi.bytecode as HexString,
       args: [
-        namedWallets.alice.account.address,
-        namedWallets.bob.account.address,
-        namedWallets.eve.account.address,
+        namedWallets.alice.account?.address,
+        namedWallets.bob.account?.address,
+        namedWallets.eve.account?.address,
       ],
     });
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     contractAddress = receipt.contractAddress as Address;
 
-    millionairesDilemma = getContract({
+    richeeRich = getContract({
       address: contractAddress as HexString,
       abi: contractAbi.abi,
       client: wallet,
@@ -58,7 +61,7 @@ describe("MillionairesDilemma Tests", function () {
         const participant = participants[i];
         const amount = parseEther(amounts[i]);
         const encryptedAmount = await incoConfig.encrypt(amount, {
-          accountAddress: namedWallets[participant].account.address,
+          accountAddress: namedWallets[participant].account?.address,
           dappAddress: contractAddress,
         });
 
@@ -67,6 +70,8 @@ describe("MillionairesDilemma Tests", function () {
           abi: contractAbi.abi,
           functionName: "submitEncryptedBalance",
           args: [encryptedAmount],
+          chain: publicClient.chain,
+          account: namedWallets[participant].account ?? null,
         });
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -77,7 +82,7 @@ describe("MillionairesDilemma Tests", function () {
           address: contractAddress,
           abi: contractAbi.abi,
           functionName: "hasSubmitted",
-          args: [namedWallets[participant].account.address],
+          args: [namedWallets[participant].account?.address],
         });
         expect(hasSubmitted).to.be.true;
       }
@@ -86,7 +91,7 @@ describe("MillionairesDilemma Tests", function () {
     it("should revert if a participant submits more than once", async function () {
       const amount = parseEther("100");
       const encryptedAmount = await incoConfig.encrypt(amount, {
-        accountAddress: namedWallets.alice.account.address,
+        accountAddress: namedWallets.alice.account?.address,
         dappAddress: contractAddress,
       });
 
@@ -95,6 +100,8 @@ describe("MillionairesDilemma Tests", function () {
         abi: contractAbi.abi,
         functionName: "submitEncryptedBalance",
         args: [encryptedAmount],
+        chain: publicClient.chain,
+        account: namedWallets.alice.account ?? null,
       });
 
       await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -105,8 +112,10 @@ describe("MillionairesDilemma Tests", function () {
           abi: contractAbi.abi,
           functionName: "submitEncryptedBalance",
           args: [encryptedAmount],
+          chain: publicClient.chain,
+          account: namedWallets.alice.account ?? null,
         })
-      ).to.be.revertedWith("AlreadySubmitted()");
+      ).to.be.rejectedWith("AlreadySubmitted()");
     });
 
     it("should revert if a non-participant tries to submit", async function () {
@@ -122,8 +131,10 @@ describe("MillionairesDilemma Tests", function () {
           abi: contractAbi.abi,
           functionName: "submitEncryptedBalance",
           args: [encryptedAmount],
+          chain: publicClient.chain,
+          account: wallet.account,
         })
-      ).to.be.revertedWith("InvalidSender()");
+      ).to.be.rejectedWith("InvalidSender()");
     });
   });
 
@@ -136,7 +147,7 @@ describe("MillionairesDilemma Tests", function () {
         const participant = participants[i];
         const amount = parseEther(amounts[i]);
         const encryptedAmount = await incoConfig.encrypt(amount, {
-          accountAddress: namedWallets[participant].account.address,
+          accountAddress: namedWallets[participant].account?.address,
           dappAddress: contractAddress,
         });
 
@@ -145,6 +156,8 @@ describe("MillionairesDilemma Tests", function () {
           abi: contractAbi.abi,
           functionName: "submitEncryptedBalance",
           args: [encryptedAmount],
+          chain: publicClient.chain,
+          account: namedWallets[participant].account ?? null,
         });
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -152,14 +165,13 @@ describe("MillionairesDilemma Tests", function () {
     });
 
     it("should revert if not all participants have submitted", async function () {
-      // Deploy a new contract with only two submissions
       const txHash = await wallet.deployContract({
         abi: contractAbi.abi,
         bytecode: contractAbi.bytecode as HexString,
         args: [
-          namedWallets.alice.account.address,
-          namedWallets.bob.account.address,
-          namedWallets.eve.account.address,
+          namedWallets.alice.account?.address,
+          namedWallets.bob.account?.address,
+          namedWallets.eve.account?.address,
         ],
       });
 
@@ -174,7 +186,7 @@ describe("MillionairesDilemma Tests", function () {
 
       const amount = parseEther("100");
       const encryptedAmount = await incoConfig.encrypt(amount, {
-        accountAddress: namedWallets.alice.account.address,
+        accountAddress: namedWallets.alice.account?.address,
         dappAddress: newContractAddress,
       });
 
@@ -183,6 +195,8 @@ describe("MillionairesDilemma Tests", function () {
         abi: contractAbi.abi,
         functionName: "submitEncryptedBalance",
         args: [encryptedAmount],
+        chain: publicClient.chain,
+        account: namedWallets.alice.account ?? null,
       });
 
       await publicClient.waitForTransactionReceipt({ hash: txHashSubmit });
@@ -193,33 +207,76 @@ describe("MillionairesDilemma Tests", function () {
           abi: contractAbi.abi,
           functionName: "determineRichest",
           args: [],
+          chain: publicClient.chain,
+          account: wallet.account ?? null,
         })
-      ).to.be.revertedWith("NotAllSubmitted()");
+      ).to.be.rejectedWith("NotAllSubmitted()");
     });
 
-    it("should correctly determine the richest participant", async function () {
+    it("should correctly determine the richest participant and decrypt balances", async function () {
       const txHash = await wallet.writeContract({
         address: contractAddress,
         abi: contractAbi.abi,
         functionName: "determineRichest",
         args: [],
+        chain: publicClient.chain,
+        account: wallet.account ?? null,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      const logs = receipt.logs.filter(
-        (log) => log.eventName === "RichestDetermined"
-      );
+      const logs = receipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({
+              abi: contractAbi.abi,
+              data: log.data,
+              topics: log.topics,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .filter((log): log is NonNullable<typeof log> => 
+          log !== null && log.eventName === "RichestDetermined"
+        );
 
       expect(logs.length).to.equal(1);
 
       const event = logs[0];
-      const { isAlice, isBob, isEve } = event.args;
-
-      // Assuming isBob is true, as Bob had the highest amount (200)
+      const { isAlice, isBob, isEve } = (event.args as unknown) as { isAlice: boolean; isBob: boolean; isEve: boolean };
+      console.log("isAlice", isAlice);
+      console.log("isBob", isBob);
+      console.log("isEve", isEve);
       expect(isBob).to.be.true;
       expect(isAlice).to.be.false;
       expect(isEve).to.be.false;
+
+      // Decrypt and assert balances
+      const expectedValues: Record<string, string> = {
+        alice: '100',
+        bob: '200',
+        eve: '150',
+      };
+
+      for (const participant of ['alice', 'bob', 'eve']) {
+        const address = namedWallets[participant].account?.address;
+
+        const encryptedBalance = await publicClient.readContract({
+          address: contractAddress,
+          abi: contractAbi.abi,
+          functionName: "getEncryptedBalance",
+          args: [address],
+        });
+
+        const reencryptor = reEncryptors[participant];
+        const resultPlaintext = await reencryptor({ handle: encryptedBalance });
+
+        console.log(`${participant} decrypted:`, resultPlaintext.value.toString());
+        expect(resultPlaintext.value.toString()).to.equal(
+          parseEther(expectedValues[participant]).toString()
+        );
+      }
     });
   });
 });

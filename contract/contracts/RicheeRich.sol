@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { e, euint256, ebool } from "@inco/lightning/src/Lib.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract MillionairesDilemma is ReentrancyGuard {
+contract RicheeRich is ReentrancyGuard {
 
     mapping(address => euint256) private balances;
     mapping(address => bool) public hasSubmitted;

@@ -86,5 +86,5 @@ export const namedWallets: Record<string, ReturnType<typeof createWalletClient>>
 
 console.log("✅ Named wallets created:");
 Object.entries(namedWallets).forEach(([name, client]) => {
-  console.log(`   - ${name}: ${client.account.address}`);
+  console.log(`   - ${name}: ${client.account?.address}`);
 });

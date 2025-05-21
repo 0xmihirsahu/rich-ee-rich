@@ -63,22 +63,27 @@ export const namedWallets: Record<string, ReturnType<typeof createWalletClient>>
     transport: http(rpcUrl),
   }),
   bob: createWalletClient({
-    account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/1" }),
-    chain,
-    transport: http(rpcUrl),
-  }),
-  dave: createWalletClient({
-    account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/2" }),
-    chain,
-    transport: http(rpcUrl),
-  }),
-  carol: createWalletClient({
     account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/3" }),
     chain,
     transport: http(rpcUrl),
   }),
-  john: createWalletClient({
+  eve: createWalletClient({
+    account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/2" }),
+    chain,
+    transport: http(rpcUrl),
+  }),
+  dave: createWalletClient({
+    account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/1" }),
+    chain,
+    transport: http(rpcUrl),
+  }),
+  carol: createWalletClient({
     account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/4" }),
+    chain,
+    transport: http(rpcUrl),
+  }),
+  john: createWalletClient({
+    account: mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/5" }),
     chain,
     transport: http(rpcUrl),
   }),

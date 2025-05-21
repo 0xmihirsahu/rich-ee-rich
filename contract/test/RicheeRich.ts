@@ -21,16 +21,29 @@ describe("RicheeRich Tests", function () {
 
   beforeEach(async function () {
     const chainId = publicClient.chain.id;
+    console.log("Chain ID:", chainId);
+    console.log("Named wallets:", {
+      alice: namedWallets.alice.account?.address,
+      bob: namedWallets.bob.account?.address,
+      eve: namedWallets.eve.account?.address,
+      main: wallet.account?.address,
+    });
+
     incoConfig = chainId === 31337
       ? Lightning.localNode()
       : Lightning.latest('testnet', 84532);
 
-    reEncryptors = {
-      alice: await incoConfig.getReencryptor(namedWallets.alice),
-      bob: await incoConfig.getReencryptor(namedWallets.bob),
-      eve: await incoConfig.getReencryptor(namedWallets.eve),
-      main: await incoConfig.getReencryptor(wallet),
-    };
+    try {
+      reEncryptors = {
+        alice: await incoConfig.getReencryptor(namedWallets.alice),
+        bob: await incoConfig.getReencryptor(namedWallets.bob),
+        eve: await incoConfig.getReencryptor(namedWallets.eve),
+        main: await incoConfig.getReencryptor(wallet),
+      };
+    } catch (error) {
+      console.error("Error creating reencryptors:", error);
+      throw error;
+    }
 
     const txHash = await wallet.deployContract({
       abi: contractAbi.abi,

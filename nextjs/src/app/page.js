@@ -23,7 +23,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <CipherBackground />
+      <CipherBackground/>
       <div className="max-w-4xl mx-auto p-6">
         {isConnected ? (
           <div className="grid md:grid-cols-2 place-items-start gap-6 mt-32">

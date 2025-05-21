@@ -1,163 +1,253 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { cn } from '@/utils/cn';
 
-const MatrixBackground = ({ hover }) => {
+const CipherBackground = ({
+  hover = false,
+  className,
+  density = 'medium',
+  colorScheme = 'black',
+}) => {
   const canvasRef = useRef(null);
-  const year = new Date().getFullYear();
+  const pointsRef = useRef([]);
+  const animationRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const mouseRef = useRef({ x: -1000, y: -1000 });
+  const [isInitialized, setIsInitialized] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isDark = true;
 
-  useEffect(() => {
+  const densitySettings = {
+    low: { spacing: 30, fontSize: 14 },
+    medium: { spacing: 20, fontSize: 16 },
+    high: { spacing: 15, fontSize: 18 },
+  };
+
+  const colorSchemes = {
+    blue: {
+      primary: isDark ? 'rgba(64, 156, 255, 0.8)' : 'rgba(0, 112, 243, 0.8)',
+      secondary: isDark ? 'rgba(100, 180, 255, 0.5)' : 'rgba(30, 136, 229, 0.5)',
+      dim: isDark ? 'rgba(50, 130, 220, 0.2)' : 'rgba(13, 71, 161, 0.2)',
+      background: isDark ? 'rgba(10, 25, 41, 0.1)' : 'rgba(240, 247, 255, 0.1)',
+    },
+    green: {
+      primary: isDark ? 'rgba(72, 187, 120, 0.8)' : 'rgba(39, 174, 96, 0.8)',
+      secondary: isDark ? 'rgba(104, 211, 145, 0.5)' : 'rgba(46, 204, 113, 0.5)',
+      dim: isDark ? 'rgba(56, 161, 105, 0.2)' : 'rgba(39, 174, 96, 0.2)',
+      background: isDark ? 'rgba(13, 40, 30, 0.1)' : 'rgba(240, 255, 244, 0.1)',
+    },
+    purple: {
+      primary: isDark ? 'rgba(159, 122, 234, 0.8)' : 'rgba(128, 90, 213, 0.8)',
+      secondary: isDark ? 'rgba(183, 148, 244, 0.5)' : 'rgba(144, 108, 228, 0.5)',
+      dim: isDark ? 'rgba(128, 90, 213, 0.2)' : 'rgba(102, 51, 153, 0.2)',
+      background: isDark ? 'rgba(44, 31, 75, 0.1)' : 'rgba(250, 245, 255, 0.1)',
+    },
+    cyber: {
+      primary: isDark ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 184, 0, 0.8)',
+      secondary: isDark ? 'rgba(0, 255, 255, 0.5)' : 'rgba(0, 204, 204, 0.5)',
+      dim: isDark ? 'rgba(255, 0, 128, 0.2)' : 'rgba(204, 0, 102, 0.2)',
+      background: isDark ? 'rgba(10, 10, 40, 0.1)' : 'rgba(245, 245, 255, 0.1)',
+    },
+    midnight: {
+        primary: isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(30, 41, 59, 0.85)',
+        secondary: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(71, 85, 105, 0.5)',
+        dim: isDark ? 'rgba(100, 116, 139, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+        background: isDark ? 'rgba(2, 6, 23, 0.1)' : 'rgba(226, 232, 240, 0.1)',
+    },
+    black: {
+        primary: isDark ? 'rgba(20, 20, 20, 0.85)' : 'rgba(30, 30, 30, 0.85)',
+        secondary: isDark ? 'rgba(40, 40, 40, 0.6)' : 'rgba(60, 60, 60, 0.6)',
+        dim: isDark ? 'rgba(70, 70, 70, 0.3)' : 'rgba(90, 90, 90, 0.3)',
+        background: isDark ? 'rgba(5, 5, 5, 0.95)' : 'rgba(245, 245, 245, 0.05)',
+    },
+
+  };
+
+  const colors = colorSchemes[colorScheme];
+  const { spacing, fontSize } = densitySettings[density];
+
+  const characterSets = {
+    matrix: '01',
+    currency: '$£€₹₿₽¥',
+    crypto: '₿ΞĐŁɃ⟠ΞΦ',
+    punctuation: '.;,?!*#%&',
+  };
+
+  const allCharacters = Object.values(characterSets).join('');
+
+  const getRandomCharacter = () => {
+    if (Math.random() < 0.05) return ' ';
+    const rand = Math.random();
+    if (rand < 0.4) return characterSets.matrix.charAt(Math.floor(Math.random() * characterSets.matrix.length));
+    if (rand < 0.6) return characterSets.currency.charAt(Math.floor(Math.random() * characterSets.currency.length));
+    if (rand < 0.8) return characterSets.crypto.charAt(Math.floor(Math.random() * characterSets.crypto.length));
+    return characterSets.punctuation.charAt(Math.floor(Math.random() * characterSets.punctuation.length));
+  };
+
+  const initializePoints = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationFrameId;
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    };
-
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    const spacing = 19;
-    const fontSize = 16;
-    let isPhone = window.innerWidth <= 768;
-
-    const rows = isPhone ? Math.ceil(window.innerHeight / spacing) + 10 : Math.ceil(window.innerHeight / spacing) + 2;
-    const cols = Math.ceil(window.innerWidth / spacing) + 2;
-    const maxTravelDistance = spacing / 3;
-    const influenceRadius = 125;
-    const matrix = '$£richeno€₹₿.*';
-
-    const dimmedBlue = 'rgba(100, 100, 100, 0.030)';
-    const fullBlue = 'rgba(189, 230, 246, 0.050)';
-
-    const getRandomCharacter = () => {
-      return matrix.charAt(Math.floor(Math.random() * matrix.length));
-    };
+    const rows = Math.ceil(height / spacing) + 2;
+    const cols = Math.ceil(width / spacing) + 2;
 
     const points = [];
+
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
+        const offsetX = Math.random() * 4 - 2;
+        const offsetY = Math.random() * 4 - 2;
+
         points.push({
-          x: j * spacing,
-          y: i * spacing,
+          x: j * spacing + offsetX,
+          y: i * spacing + offsetY,
           originalX: j * spacing,
           originalY: i * spacing,
-          color: dimmedBlue,
-          hoverColor: fullBlue,
-          isMoving: false,
-          opacity: 1,
+          vx: 0,
+          vy: 0,
           character: getRandomCharacter(),
-          drop: 1
+          color: Math.random() < 0.1 ? colors.secondary : colors.dim,
+          size: fontSize * (Math.random() * 0.4 + 0.8),
+          opacity: Math.random() * 0.5 + 0.5,
+          lastUpdate: 0,
         });
       }
     }
 
-    let mousePos = { x: 0, y: 0 };
+    pointsRef.current = points;
+    setIsInitialized(true);
+  };
 
-    const animate = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+  const resizeCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.scale(dpr, dpr);
+      ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.95)' : 'rgba(255, 255, 255, 0.95)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
-      const isMouseOutside =
-        mousePos.x <= 0 || mousePos.y <= 0 || mousePos.x > canvas.width || mousePos.y > canvas.height;
-      const currentInfluenceRadius = isMouseOutside ? 0 : influenceRadius;
-      const influenceRadiusSquared = currentInfluenceRadius * currentInfluenceRadius;
+    initializePoints();
+  };
 
-      points.forEach((point) => {
-        const dx = mousePos.x - point.x;
-        const dy = mousePos.y - point.y;
-        const distanceSquared = dx * dx + dy * dy;
+  const animate = (timestamp) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-        if (hover) {
-          if (distanceSquared < influenceRadiusSquared) {
-            const distance = Math.sqrt(distanceSquared);
-            const force = (currentInfluenceRadius - distance) / currentInfluenceRadius;
-            const forceFactor = force * 0.05;
+    const deltaTime = timestamp - (lastTimeRef.current || timestamp);
+    lastTimeRef.current = timestamp;
 
-            let newX = point.x + dx * forceFactor;
-            let newY = point.y + dy * forceFactor;
+    ctx.fillStyle = colors.background;
+    ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
-            const dxTravel = newX - point.originalX;
-            const dyTravel = newY - point.originalY;
-            const travelDistanceSquared = dxTravel * dxTravel + dyTravel * dyTravel;
+    const mouseX = mouseRef.current.x;
+    const mouseY = mouseRef.current.y;
+    const influenceRadius = hover ? 150 : 0;
 
-            if (travelDistanceSquared > maxTravelDistance * maxTravelDistance) {
-              const angle = Math.atan2(dyTravel, dxTravel);
-              newX = point.originalX + Math.cos(angle) * maxTravelDistance;
-              newY = point.originalY + Math.sin(angle) * maxTravelDistance;
-            }
+    pointsRef.current.forEach((point) => {
+      const dx = mouseX - point.x;
+      const dy = mouseY - point.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
-            point.isMoving = newX !== point.x || newY !== point.y;
-            point.x = newX;
-            point.y = newY;
-            point.color = point.isMoving ? point.hoverColor : fullBlue;
-          } else {
-            const dxReset = point.originalX - point.x;
-            const dyReset = point.originalY - point.y;
-            point.x += dxReset * 0.1;
-            point.y += dyReset * 0.1;
-            point.isMoving = Math.abs(dxReset) > 0.01 || Math.abs(dyReset) > 0.01;
-            point.color = point.isMoving ? point.hoverColor : dimmedBlue;
-          }
-        } else {
-          point.x = point.originalX;
-          point.y = point.originalY;
-          point.color = dimmedBlue;
-        }
+      if (hover && distance < influenceRadius) {
+        const force = (influenceRadius - distance) / influenceRadius;
+        const fx = dx / distance || 0;
+        const fy = dy / distance || 0;
 
-        if ((point.isMoving || Math.random() < 0.02) && Math.random() < 0.2) {
-          point.character = getRandomCharacter();
-        }
+        point.vx += fx * force * 0.2;
+        point.vy += fy * force * 0.2;
 
-        ctx.fillStyle = point.color;
-        ctx.globalAlpha = point.opacity;
-        ctx.font = `${fontSize}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(point.character, point.x, point.y);
-      });
+        if (Math.random() < 0.1) point.character = getRandomCharacter();
+        point.color = distance < influenceRadius * 0.5 ? colors.primary : colors.secondary;
+        point.opacity = Math.min(1, point.opacity + 0.05);
+        point.size = fontSize * (1 + force * 0.5);
+      } else {
+        point.vx += (point.originalX - point.x) * 0.05;
+        point.vy += (point.originalY - point.y) * 0.05;
 
-      animationFrameId = requestAnimationFrame(animate);
-    };
+        if (Math.random() < 0.005) point.character = getRandomCharacter();
 
-    animate();
-
-    const handleMouseMove = (e) => {
-      if (!isPhone && hover) {
-        mousePos = { x: e.clientX, y: e.clientY };
+        point.color = colors.dim;
+        point.opacity = Math.max(0.5, point.opacity - 0.01);
+        point.size = fontSize;
       }
-    };
 
-    const handleResize = () => {
-      resizeCanvas();
-      isPhone = window.innerWidth <= 768;
-    };
+      point.vx *= 0.9;
+      point.vy *= 0.9;
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('resize', handleResize);
+      point.x += point.vx;
+      point.y += point.vy;
+
+      ctx.font = `${point.size}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = point.color;
+      ctx.globalAlpha = point.opacity;
+      ctx.fillText(point.character, point.x, point.y);
+      ctx.globalAlpha = 1;
+    });
+
+    animationRef.current = requestAnimationFrame(animate);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isMobile && hover) {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const throttledMouseMove = (e) => {
+    const now = performance.now();
+    if (now - lastTimeRef.current > 16) {
+      handleMouseMove(e);
+      lastTimeRef.current = now;
+    }
+  };
+
+  useEffect(() => {
+    resizeCanvas();
+    animationRef.current = requestAnimationFrame(animate);
+    window.addEventListener('mousemove', throttledMouseMove);
+    window.addEventListener('resize', resizeCanvas);
+
+    if (isMobile) {
+      const handleTouch = (e) => {
+        if (e.touches.length > 0) {
+          mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      };
+      window.addEventListener('touchmove', handleTouch);
+      return () => {
+        window.removeEventListener('touchmove', handleTouch);
+      };
+    }
 
     return () => {
+      cancelAnimationFrame(animationRef.current);
+      window.removeEventListener('mousemove', throttledMouseMove);
       window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
     };
-  }, [year, hover]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hover, isMobile, isDark, colorScheme, density]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full -z-10 bg-black"
+      className={cn('fixed inset-0 z-[-1] w-full h-full', className)}
     />
   );
 };
 
-export default MatrixBackground;
+export default CipherBackground;

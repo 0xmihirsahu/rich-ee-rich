@@ -12,7 +12,7 @@ import {
 } from "@/utils/contract";
 import { useChainBalance } from "@/provider/balance-provider";
 import { Lock, Unlock, RefreshCw, CreditCard } from "lucide-react";
-
+import Card from "@/components/card";
 const EncryptedTokenInterface = () => {
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -82,7 +82,7 @@ const EncryptedTokenInterface = () => {
   };
 
   return (
-    <div className="flex items-center justify-center w-full">
+    <Card className="flex items-center justify-center w-full">
       <div className="w-full">
         <div className="w-full bg-gray-700/40 rounded-none shadow-2xl border border-gray-700 overflow-hidden">
           <div className="p-6 space-y-4">
@@ -102,7 +102,7 @@ const EncryptedTokenInterface = () => {
               </button>
             </div>
 
-            <div className="bg-gray-700 rounded-lg p-4">
+            <div className="bg-gray-700 rounded-none p-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-300">Encrypted Balance</span>
                 <div className="flex items-center">
@@ -130,7 +130,7 @@ const EncryptedTokenInterface = () => {
                 placeholder="Enter Amount to Mint"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full p-3 bg-gray-700 text-white rounded-none border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 disabled={isLoading}
               />
 
@@ -142,11 +142,11 @@ const EncryptedTokenInterface = () => {
 
               <button
                 onClick={handleMint}
-                className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full p-3 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!amount || Number(amount) <= 0 || isLoading}
               >
                 {isLoading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-none h-5 w-5 border-b-2 border-white"></div>
                 ) : (
                   "Mint cUSDC"
                 )}
@@ -158,7 +158,7 @@ const EncryptedTokenInterface = () => {
           Only owner of contract can mint the token.
         </p> */}
       </div>
-    </div>
+    </Card>
   );
 };
 

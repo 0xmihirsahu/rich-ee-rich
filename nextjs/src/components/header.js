@@ -4,7 +4,7 @@ import { useAccount } from "wagmi";
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { useDisconnect } from "wagmi";
 import { Wallet, LogOut, User } from "lucide-react";
-
+import { Icon } from "@/components/ui/Icon";
 export default function Header() {
   const { isConnected, address } = useAccount();
   const { open } = useWeb3Modal();
@@ -36,6 +36,7 @@ export default function Header() {
     <header className="bg-blue-600/10 sticky top-0 z-50">
     <div className="flex items-center px-24 justify-between h-16">
       <h1 className="text-3xl text-white flex items-center font-space-grotesk gap-3">
+      
         richee
       </h1>
       <div>

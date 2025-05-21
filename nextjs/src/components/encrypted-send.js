@@ -9,7 +9,7 @@ import { Send, ArrowRight } from "lucide-react";
 import { encryptValue } from "@/utils/inco-lite";
 import { parseEther } from "viem";
 import { ENCRYPTED_ERC20_CONTRACT_ADDRESS } from "@/utils/contract";
-
+import Card from "@/components/card";
 const EncryptedSend = () => {
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
@@ -96,8 +96,9 @@ const EncryptedSend = () => {
   };
 
   return (
-    <div className="flex items-center justify-center w-full">
+    <Card className="flex items-center justify-center w-full">
       <div className="w-full bg-gray-700/40 rounded-none shadow-2xl border border-gray-700 overflow-hidden">
+      
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white flex items-center">
@@ -112,7 +113,7 @@ const EncryptedSend = () => {
               placeholder="Receiver Address (0x...)"
               value={receiverAddress}
               onChange={(e) => setReceiverAddress(e.target.value)}
-              className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full p-3 bg-gray-700 text-white rounded-none border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               disabled={isLoading}
             />
 
@@ -121,7 +122,7 @@ const EncryptedSend = () => {
               placeholder="Enter Amount to Send"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full p-3 bg-gray-700 text-white rounded-none border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               disabled={isLoading}
             />
 
@@ -133,11 +134,11 @@ const EncryptedSend = () => {
 
             <button
               onClick={send}
-              className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full p-3 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!amount || Number(amount) <= 0 || isLoading}
             >
               {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-none h-5 w-5 border-b-2 border-white"></div>
               ) : (
                 <div className="flex items-center">
                   Send Encrypted <ArrowRight className="ml-2" />
@@ -147,7 +148,7 @@ const EncryptedSend = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

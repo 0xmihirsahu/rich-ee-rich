@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { e, euint256, ebool } from "@inco/lightning/src/Lib.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract RicheeRich is ReentrancyGuard {
+contract Richee is ReentrancyGuard {
 
     mapping(address => euint256) private balances;
     mapping(address => bool) public hasSubmitted;
@@ -37,7 +37,10 @@ contract RicheeRich is ReentrancyGuard {
         if (hasSubmitted[msg.sender]) revert AlreadySubmitted();
 
         euint256 amount = e.newEuint256(encryptedAmount, msg.sender);
-
+        e.allow(amount, address(this));
+        e.allow(amount, alice);
+        e.allow(amount, bob);
+        e.allow(amount, eve);
         balances[msg.sender] = amount;
         hasSubmitted[msg.sender] = true;
         emit Submitted(msg.sender);
@@ -56,9 +59,15 @@ contract RicheeRich is ReentrancyGuard {
         ebool isBob = e.eq(finalMax,balances[bob]);
         ebool isEve = e.eq(finalMax,balances[eve]);
 
-        e.allow(isAlice, msg.sender);
-        e.allow(isBob, msg.sender);
-        e.allow(isEve, msg.sender);
+        e.allow(isAlice, alice);
+        e.allow(isAlice, bob);
+        e.allow(isAlice, eve);
+        e.allow(isBob, alice);
+        e.allow(isBob, bob);
+        e.allow(isBob, eve);
+        e.allow(isEve, alice);
+        e.allow(isEve, bob);
+        e.allow(isEve, eve);
 
         emit RichestDetermined(isAlice, isBob, isEve);
     }

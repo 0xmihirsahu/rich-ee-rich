@@ -3,9 +3,9 @@
 import { useAccount } from "wagmi";
 import { useEffect, useState } from "react";
 import { Wallet } from "lucide-react";
-import EncryptedTokenInterface from "@/components/encrypted-token-ineterface";
-import CipherBackground from "@/components/cipher-background";
 import EncryptedSubmission from "@/components/encrypted-submission";
+import RichestReveal from "@/components/richest-reveal";
+import CipherBackground from "@/components/cipher-background";
 export default function Home() {
   const { isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
@@ -14,31 +14,35 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  if (!mounted)
-    return (
-      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
-        <div className="text-white animate-pulse">Loading...</div>
-      </div>
-    );
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen">
-      <CipherBackground/>
+    <div className="min-h-screen bg-gray-900/0 text-white">
+      <CipherBackground />
       <div className="max-w-4xl mx-auto p-6">
         {isConnected ? (
-          <div className="grid md:grid-cols-2 place-items-start gap-6 mt-32">
-            <EncryptedTokenInterface />
-            <EncryptedSubmission />
+          <div className="space-y-8">
+            <h1 className="text-4xl font-bold text-center mb-8">
+              Millionaire&apos;s Dilemma
+            </h1>
+            <div className="grid md:grid-cols-2 gap-8">
+              <EncryptedSubmission />
+              <RichestReveal />
+            </div>
           </div>
         ) : (
-          <div className="bg-zinc-800/90 border border-gray-700 rounded-none p-10 text-center shadow-2xl">
-            <Wallet className="mx-auto mb-4 w-12 h-12 text-blue-600" />
-            <p className="text-white text-lg mb-4">
-              Connect your wallet to find if you&apos;re the richest
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <Wallet className="w-16 h-16 text-blue-500 mb-4" />
+            <h2 className="text-2xl font-semibold mb-4">
+              Connect your wallet to play
+            </h2>
+            <p className="text-gray-400 text-center mb-8">
+              Join the encrypted wealth comparison game where you can submit your wealth
+              privately and discover who is the richest without revealing individual values.
             </p>
             <button
               onClick={() => document.querySelector('button')?.click()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-none transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
             >
               Connect Wallet
             </button>

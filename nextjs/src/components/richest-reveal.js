@@ -17,35 +17,23 @@ const RichestReveal = () => {
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
-  useEffect(() => {
-    let unwatch;
-  
-    const setupWatcher = async () => {
-      unwatch = await publicClient.watchContractEvent({
-        address: RICHEE_CONTRACT_ADDRESS,
-        abi: RICHEE_ABI,
-        eventName: "RichestFound",
-        onLogs: (logs) => {
-          if (logs?.length) {
-            console.log("logs: ",logs);
-            console.log("logs[0].args: ",logs[0].args);
-            const richest = logs[0]?.args?.richest;
-            console.log("richest: ",richest);
-            if (richest) {
-              setRichestAddress(richest);
-              setIsFinalized(true);
-            }
-          }
-        },
-      });
-    };
-  
-    setupWatcher();
-  
-    return () => {
-      if (unwatch) unwatch();
-    };
-  }, [publicClient]);
+  // Watch for RichestFound event
+  useWatchContractEvent({
+    address: RICHEE_CONTRACT_ADDRESS,
+    abi: RICHEE_ABI,
+    eventName: "RichestFound",
+    onLogs: (logs) => {
+      console.log("RichestFound event logs:", logs);
+      if (logs?.length > 0) {
+        const richest = logs[0].args.richest;
+        console.log("Richest address from event:", richest);
+        if (richest) {
+          setRichestAddress(richest);
+          setIsFinalized(true);
+        }
+      }
+    },
+  });
 
   // Function to check if all participants have submitted
   const checkAllSubmitted = async () => {
@@ -70,6 +58,31 @@ const RichestReveal = () => {
         functionName: "isFinalized",
       });
       setIsFinalized(finalized);
+      
+      // If finalized, try to get the richest address from the event logs
+      if (finalized) {
+        const logs = await publicClient.getLogs({
+          address: RICHEE_CONTRACT_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'RichestFound',
+            inputs: [
+              {
+                indexed: true,
+                name: 'richest',
+                type: 'address'
+              }
+            ]
+          },
+          fromBlock: 'earliest',
+          toBlock: 'latest'
+        });
+        
+        if (logs.length > 0) {
+          const richest = logs[logs.length - 1].args.richest;
+          setRichestAddress(richest);
+        }
+      }
     } catch (error) {
       console.error("Error checking finalization:", error);
     }
@@ -117,6 +130,28 @@ const RichestReveal = () => {
 
         if (finalized) {
           setIsFinalized(true);
+          // Get the richest address from event logs
+          const logs = await publicClient.getLogs({
+            address: RICHEE_CONTRACT_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'RichestFound',
+              inputs: [
+                {
+                  indexed: true,
+                  name: 'richest',
+                  type: 'address'
+                }
+              ]
+            },
+            fromBlock: 'earliest',
+            toBlock: 'latest'
+          });
+          
+          if (logs.length > 0) {
+            const richest = logs[logs.length - 1].args.richest;
+            setRichestAddress(richest);
+          }
         } else {
           setTimeout(checkResult, 2000); // Poll every 2 seconds
         }

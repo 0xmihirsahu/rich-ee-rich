@@ -7,43 +7,23 @@ import {
   getAddress,
   Abi,
   decodeEventLog,
+  Account,
 } from "viem";
 import { HexString } from "@inco/js/dist/binary";
 // @ts-ignore
 import { Lightning } from "@inco/js/lite";
 import contractAbi from "../artifacts/contracts/Richee.sol/Richee.json";
 
-describe("RicheeRich Tests", function () {
+describe("Richee Tests", function () {
   let contractAddress: Address;
-  let richeeRich: any;
+  let richee: any;
   let incoConfig: any;
-  let reEncryptors: Record<string, any>;
 
   beforeEach(async function () {
     const chainId = publicClient.chain.id;
-    console.log("Chain ID:", chainId);
-    console.log("Named wallets:", {
-      alice: namedWallets.alice.account?.address,
-      bob: namedWallets.bob.account?.address,
-      eve: namedWallets.eve.account?.address,
-      main: wallet.account?.address,
-    });
-
     incoConfig = chainId === 31337
       ? Lightning.localNode()
-      : Lightning.latest('testnet', 84532);
-
-    try {
-      reEncryptors = {
-        alice: await incoConfig.getReencryptor(namedWallets.alice),
-        bob: await incoConfig.getReencryptor(namedWallets.bob),
-        eve: await incoConfig.getReencryptor(namedWallets.eve),
-        main: await incoConfig.getReencryptor(wallet),
-      };
-    } catch (error) {
-      console.error("Error creating reencryptors:", error);
-      throw error;
-    }
+      : Lightning.latest("testnet", 84532);
 
     const txHash = await wallet.deployContract({
       abi: contractAbi.abi,
@@ -57,19 +37,18 @@ describe("RicheeRich Tests", function () {
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     contractAddress = receipt.contractAddress as Address;
-    console.log("RicheeContract address:", contractAddress);
 
-    richeeRich = getContract({
+    richee = getContract({
       address: contractAddress as HexString,
       abi: contractAbi.abi,
       client: wallet,
     });
   });
 
-  describe("Encrypted Balance Submission", function () {
-    it("should allow each participant to submit an encrypted balance", async function () {
-      const participants = ['alice', 'bob', 'eve'];
-      const amounts = ['100', '200', '150'];
+  describe("Encrypted Wealth Submission", function () {
+    it("should allow each participant to submit an encrypted wealth", async function () {
+      const participants = ["alice", "bob", "eve"];
+      const amounts = ["100", "200", "150"];
 
       for (let i = 0; i < participants.length; i++) {
         const participant = participants[i];
@@ -82,10 +61,10 @@ describe("RicheeRich Tests", function () {
         const txHash = await namedWallets[participant].writeContract({
           address: contractAddress,
           abi: contractAbi.abi,
-          functionName: "submitEncryptedBalance",
+          functionName: "submit",
           args: [encryptedAmount],
           chain: publicClient.chain,
-          account: namedWallets[participant].account ?? null,
+          account: namedWallets[participant].account as Account,
         });
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -112,10 +91,10 @@ describe("RicheeRich Tests", function () {
       const txHash = await namedWallets.alice.writeContract({
         address: contractAddress,
         abi: contractAbi.abi,
-        functionName: "submitEncryptedBalance",
+        functionName: "submit",
         args: [encryptedAmount],
         chain: publicClient.chain,
-        account: namedWallets.alice.account ?? null,
+        account: namedWallets.alice.account as Account,
       });
 
       await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -124,12 +103,12 @@ describe("RicheeRich Tests", function () {
         namedWallets.alice.writeContract({
           address: contractAddress,
           abi: contractAbi.abi,
-          functionName: "submitEncryptedBalance",
+          functionName: "submit",
           args: [encryptedAmount],
           chain: publicClient.chain,
-          account: namedWallets.alice.account ?? null,
+          account: namedWallets.alice.account as Account,
         })
-      ).to.be.rejectedWith("AlreadySubmitted()");
+      ).to.be.rejectedWith("DuplicateSubmission()");
     });
 
     it("should revert if a non-participant tries to submit", async function () {
@@ -143,19 +122,19 @@ describe("RicheeRich Tests", function () {
         wallet.writeContract({
           address: contractAddress,
           abi: contractAbi.abi,
-          functionName: "submitEncryptedBalance",
+          functionName: "submit",
           args: [encryptedAmount],
           chain: publicClient.chain,
           account: wallet.account,
         })
-      ).to.be.rejectedWith("InvalidSender()");
+      ).to.be.rejectedWith("InvalidParticipant()");
     });
   });
 
   describe("Determine Richest", function () {
     beforeEach(async function () {
-      const participants = ['alice', 'bob', 'eve'];
-      const amounts = ['100', '200', '150'];
+      const participants = ["alice", "bob", "eve"];
+      const amounts = ["100", "200", "150"];
 
       for (let i = 0; i < participants.length; i++) {
         const participant = participants[i];
@@ -168,10 +147,10 @@ describe("RicheeRich Tests", function () {
         const txHash = await namedWallets[participant].writeContract({
           address: contractAddress,
           abi: contractAbi.abi,
-          functionName: "submitEncryptedBalance",
+          functionName: "submit",
           args: [encryptedAmount],
           chain: publicClient.chain,
-          account: namedWallets[participant].account ?? null,
+          account: namedWallets[participant].account as Account,
         });
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -192,7 +171,7 @@ describe("RicheeRich Tests", function () {
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
       const newContractAddress = receipt.contractAddress as Address;
 
-      const RicheeRich = getContract({
+      const richeeTemp = getContract({
         address: newContractAddress as HexString,
         abi: contractAbi.abi,
         client: wallet,
@@ -207,10 +186,10 @@ describe("RicheeRich Tests", function () {
       const txHashSubmit = await namedWallets.alice.writeContract({
         address: newContractAddress,
         abi: contractAbi.abi,
-        functionName: "submitEncryptedBalance",
+        functionName: "submit",
         args: [encryptedAmount],
         chain: publicClient.chain,
-        account: namedWallets.alice.account ?? null,
+        account: namedWallets.alice.account as Account,
       });
 
       await publicClient.waitForTransactionReceipt({ hash: txHashSubmit });
@@ -219,22 +198,22 @@ describe("RicheeRich Tests", function () {
         wallet.writeContract({
           address: newContractAddress,
           abi: contractAbi.abi,
-          functionName: "determineRichest",
+          functionName: "startComparison",
           args: [],
           chain: publicClient.chain,
-          account: wallet.account ?? null,
+          account: wallet.account,
         })
-      ).to.be.rejectedWith("NotAllSubmitted()");
+      ).to.be.rejectedWith("IncompleteSubmissions()");
     });
 
-    it("should correctly determine the richest participant and decrypt ebools", async function () {
+    it("should emit RichestFound event upon determining the richest", async function () {
       const txHash = await namedWallets.alice.writeContract({
         address: contractAddress,
         abi: contractAbi.abi,
-        functionName: "determineRichest",
+        functionName: "startComparison",
         args: [],
         chain: publicClient.chain,
-        account: namedWallets.alice.account ?? null,
+        account: namedWallets.alice.account as Account,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -251,28 +230,15 @@ describe("RicheeRich Tests", function () {
             return null;
           }
         })
-        .filter((log): log is NonNullable<typeof log> => 
-          log !== null && log.eventName === "RichestDetermined"
+        .filter((log): log is NonNullable<typeof log> =>
+          log !== null && log.eventName === "RichestFound"
         );
-
+      console.log("logs: ",logs);
       expect(logs.length).to.equal(1);
-
-      const event = logs[0];
-      const { isAlice, isBob, isEve } = (event.args as unknown) as { isAlice: boolean; isBob: boolean; isEve: boolean };
-      console.log("isAlice", isAlice);
-      console.log("isBob", isBob);
-      console.log("isEve", isEve);
-      const aliceDecrypted = await reEncryptors.alice({handle: isAlice});
-      console.log("aliceDecrypted:", aliceDecrypted.value);
-      const bobDecrypted = await reEncryptors.alice({handle: isBob});
-      console.log("bobDecrypted:", bobDecrypted.value);
-      const eveDecrypted = await reEncryptors.alice({handle: isEve});
-      console.log("eveDecrypted:", eveDecrypted.value);
-      expect(aliceDecrypted.value).to.equal(true);
-      expect(bobDecrypted.value).to.equal(false);
-      expect(eveDecrypted.value).to.equal(false);
-
+      console.log("logs: ",logs[0]);
+      console.log("logs[0].args: ",logs[0].args);
+      const richestAddress = logs[0].args as unknown as Address;
+      expect(richestAddress).to.equal(namedWallets.bob.account?.address); // Bob had 200
     });
-
   });
 });

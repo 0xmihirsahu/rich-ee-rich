@@ -4,8 +4,8 @@ import { useAccount } from "wagmi";
 import { useEffect, useState } from "react";
 import { Wallet } from "lucide-react";
 import EncryptedTokenInterface from "@/components/encrypted-token-ineterface";
-import EncryptedSend from "@/components/encrypted-send";
 import CipherBackground from "@/components/cipher-background";
+import EncryptedSubmission from "@/components/encrypted-submission";
 export default function Home() {
   const { isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
@@ -28,7 +28,7 @@ export default function Home() {
         {isConnected ? (
           <div className="grid md:grid-cols-2 place-items-start gap-6 mt-32">
             <EncryptedTokenInterface />
-            <EncryptedSend />
+            <EncryptedSubmission />
           </div>
         ) : (
           <div className="bg-zinc-800/90 border border-gray-700 rounded-none p-10 text-center shadow-2xl">

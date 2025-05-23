@@ -12,7 +12,7 @@ import {
 } from "@/utils/contract";
 import { useChainBalance } from "@/provider/balance-provider";
 import { Lock, Unlock, RefreshCw, CreditCard } from "lucide-react";
-import Card from "@/components/card";
+import Card from "@/components/ui/card";
 const EncryptedTokenInterface = () => {
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);

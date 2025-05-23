@@ -6,7 +6,7 @@ dotenv.config(); // Load environment variables
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY_BASE_SEPOLIA || "";
 const PRIVATE_KEY_ANVIL = process.env.PRIVATE_KEY_ANVIL || "";
-
+const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY || "";
 const BASE_SEPOLIA_RPC_URL = process.env.BASE_SEPOLIA_RPC_URL || "";
 
 const config: HardhatUserConfig = {
@@ -33,7 +33,22 @@ const config: HardhatUserConfig = {
       url: BASE_SEPOLIA_RPC_URL,
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
     }
-  }
+  },
+  etherscan: {
+    apiKey: {
+      baseSepolia: BASESCAN_API_KEY,
+    },
+    customChains: [
+      {
+        network: "baseSepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org",
+        },
+      },
+    ],
+  },
 };
 
 export default config;

@@ -215,7 +215,7 @@ const RichestReveal = () => {
   // Function to type out the result message
   const typeResultMessage = useCallback(() => {
     const isRichest = richestAddress?.toLowerCase() === address?.toLowerCase();
-    const text = isRichest ? "YOU ARE THE RICHEST!" : "YOU'RE BROKE!";
+    const text = isRichest ? "YOU ARE THE RICHEST!🤑" : "YOU'RE BROKE AF!😭";
     let currentIndex = 0;
 
     const typeInterval = setInterval(() => {
@@ -260,8 +260,8 @@ const RichestReveal = () => {
       <Card className="bg-gray-800/70 h-fit">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center">
-            <Trophy className="mr-3 text-yellow-400" />
-            Richest Participant
+            {/* <Trophy className="mr-3 text-yellow-400" /> */}
+            💸 Richee Rich 💸
           </h2>
         </div>
 
@@ -282,12 +282,12 @@ const RichestReveal = () => {
                     scrambleCount={10}
                     scrambleDelay={100}
                   >
-                    <p className="text-xl font-semibold text-yellow-400">
+                    <p className="text-xl font-semibold text-green-400">
                       {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
                     </p>
                   </TextScramble>
                 ) : (
-                  <p className="text-xl font-semibold text-yellow-400">
+                  <p className="text-xl font-semibold text-green-400">
                     {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
                   </p>
                 )}
@@ -297,9 +297,9 @@ const RichestReveal = () => {
               </div>
               <button
                 onClick={() => setShowModal(true)}
-                className="mt-4 w-full py-3 bg-yellow-600 text-white rounded-none hover:bg-yellow-700 transition-colors"
+                className="mt-4 w-full py-3 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
               >
-                Show Full Result
+                 {richestAddress === address ? "Feel the richness!" : "Feel the poverty!"}
               </button>
             </div>
           ) : (
@@ -312,7 +312,7 @@ const RichestReveal = () => {
               <button
                 onClick={startComparison}
                 disabled={!allSubmitted || isLoading}
-                className="w-full py-3 bg-yellow-600 text-white rounded-none hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-green-600 text-white rounded-none hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -336,7 +336,7 @@ const RichestReveal = () => {
               exit={{ opacity: 0 }}
               className="absolute inset-0 pointer-events-none crt"
               style={{
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.1) 2px, rgba(0,255,0,0.1) 4px)'
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,112,243,0.1) 2px, rgba(0,112,243,0.1) 4px)'
               }}
             />
 
@@ -375,12 +375,12 @@ const RichestReveal = () => {
                       scrambleCount={10}
                       scrambleDelay={100}
                     >
-                      <p className="text-xl font-semibold text-yellow-400">
+                      <p className="text-xl font-semibold text-green-400">
                         {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
                       </p>
                     </TextScramble>
                   ) : (
-                    <p className="text-xl font-semibold text-yellow-400">
+                    <p className="text-xl font-semibold text-green-400">
                       {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
                     </p>
                   )}

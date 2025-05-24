@@ -1,7 +1,7 @@
 export const allowedCharacters = [
-    "B", "A", "R", "C", "D", "リ", "ス", "ト", "か", "ら", "R", "0", "1", "M",
+    "B", "A", "R", "C", "D", "R", "0", "1", "M",
     "L", "K", "J", "I", "H", "G", "F", "N", "O", "P", "Q", "R", "S", "T", "U",
-    "V", "W", "X", "Y", "Z"
+    "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
   ];
   
   export const getRandomCharacter = () =>

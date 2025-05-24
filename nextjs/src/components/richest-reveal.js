@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const RichestReveal = () => {
   const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [error, setError] = useState("");
   const [richestAddress, setRichestAddress] = useState(null);
   const [isFinalized, setIsFinalized] = useState(false);
@@ -63,25 +64,6 @@ const RichestReveal = () => {
     return "Unknown";
   };
 
-  // Watch for RichestFound event
-  useWatchContractEvent({
-    address: RICHEE_CONTRACT_ADDRESS,
-    abi: RICHEE_ABI,
-    eventName: "RichestFound",
-    onLogs: (logs) => {
-      console.log("RichestFound event logs:", logs);
-      if (logs?.length > 0) {
-        const richest = logs[0].args.richest;
-        console.log("Richest address from event:", richest);
-        if (richest) {
-          setRichestAddress(richest);
-          setIsFinalized(true);
-          setShowScramble(true);
-        }
-      }
-    },
-  });
-
   // Function to check if all participants have submitted
   const checkAllSubmitted = async () => {
     try {
@@ -96,18 +78,17 @@ const RichestReveal = () => {
     }
   };
 
-  // Function to check if the result has been finalized
-  const checkFinalized = async () => {
+  // Function to check if the result has been finalized and get the richest address
+  const checkFinalizedAndGetRichest = async () => {
     try {
       const finalized = await publicClient.readContract({
         address: RICHEE_CONTRACT_ADDRESS,
         abi: RICHEE_ABI,
         functionName: "isFinalized",
       });
-      setIsFinalized(finalized);
       
-      // If finalized, try to get the richest address from the event logs
       if (finalized) {
+        // Get the richest address from event logs
         const logs = await publicClient.getLogs({
           address: RICHEE_CONTRACT_ADDRESS,
           event: {
@@ -128,11 +109,17 @@ const RichestReveal = () => {
         if (logs.length > 0) {
           const richest = logs[logs.length - 1].args.richest;
           setRichestAddress(richest);
+          setIsFinalized(true);
           setShowScramble(true);
+          setShowModal(true);
+          typeResultMessage();
+          return true;
         }
       }
+      return finalized;
     } catch (error) {
       console.error("Error checking finalization:", error);
+      return false;
     }
   };
 
@@ -140,29 +127,38 @@ const RichestReveal = () => {
   const startComparison = async () => {
     setError("");
     setIsLoading(true);
+    setIsRevealing(true);
 
     try {
-      const hash = await writeContractAsync({
-        address: RICHEE_CONTRACT_ADDRESS,
-        abi: RICHEE_ABI,
-        functionName: "startComparison",
-      });
+      // First check if already finalized
+      const isAlreadyFinalized = await checkFinalizedAndGetRichest();
+      
+      if (!isAlreadyFinalized) {
+        const hash = await writeContractAsync({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "startComparison",
+        });
 
-      const transaction = await publicClient.waitForTransactionReceipt({
-        hash: hash,
-      });
+        const transaction = await publicClient.waitForTransactionReceipt({
+          hash: hash,
+        });
 
-      if (transaction.status !== "success") {
-        throw new Error("Transaction failed");
+        if (transaction.status !== "success") {
+          throw new Error("Transaction failed");
+        }
+
+        // Start polling for the result
+        pollForResult();
+      } else {
+        setIsLoading(false);
+        setIsRevealing(false);
       }
-
-      // Start polling for the result
-      pollForResult();
     } catch (error) {
       console.error("Transaction failed:", error);
       setError(error.message || "Transaction failed");
-    } finally {
       setIsLoading(false);
+      setIsRevealing(false);
     }
   };
 
@@ -170,42 +166,17 @@ const RichestReveal = () => {
   const pollForResult = async () => {
     const checkResult = async () => {
       try {
-        const finalized = await publicClient.readContract({
-          address: RICHEE_CONTRACT_ADDRESS,
-          abi: RICHEE_ABI,
-          functionName: "isFinalized",
-        });
-
-        if (finalized) {
-          setIsFinalized(true);
-          // Get the richest address from event logs
-          const logs = await publicClient.getLogs({
-            address: RICHEE_CONTRACT_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'RichestFound',
-              inputs: [
-                {
-                  indexed: true,
-                  name: 'richest',
-                  type: 'address'
-                }
-              ]
-            },
-            fromBlock: 'earliest',
-            toBlock: 'latest'
-          });
-          
-          if (logs.length > 0) {
-            const richest = logs[logs.length - 1].args.richest;
-            setRichestAddress(richest);
-            setShowScramble(true);
-          }
-        } else {
+        const finalized = await checkFinalizedAndGetRichest();
+        if (!finalized) {
           setTimeout(checkResult, 2000); // Poll every 2 seconds
+        } else {
+          setIsLoading(false);
+          setIsRevealing(false);
         }
       } catch (error) {
         console.error("Error polling for result:", error);
+        setIsLoading(false);
+        setIsRevealing(false);
       }
     };
 
@@ -233,23 +204,13 @@ const RichestReveal = () => {
   useEffect(() => {
     fetchParticipants();
     checkAllSubmitted();
-    checkFinalized();
-    // Set up polling interval
+    // Set up polling interval for submission status only
     const interval = setInterval(() => {
       checkAllSubmitted();
-      checkFinalized();
     }, 5000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (isFinalized && richestAddress) {
-      setShowModal(true);
-      const cleanup = typeResultMessage();
-      return cleanup;
-    }
-  }, [isFinalized, richestAddress, typeResultMessage]);
 
   const handleClose = useCallback(() => {
     setShowModal(false);
@@ -261,7 +222,7 @@ const RichestReveal = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center">
             {/* <Trophy className="mr-3 text-yellow-400" /> */}
-            💸 Richee Rich 💸
+            Richee Rich 💰
           </h2>
         </div>
 
@@ -272,7 +233,7 @@ const RichestReveal = () => {
             </div>
           )}
 
-          {isFinalized ? (
+          {isFinalized && !isRevealing ? (
             <div className="text-center">
               <div className="space-y-2">
                 <p className="text-gray-300 mb-2">The richest participant is:</p>
@@ -299,7 +260,7 @@ const RichestReveal = () => {
                 onClick={() => setShowModal(true)}
                 className="mt-4 w-full py-3 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
               >
-                 {richestAddress === address ? "Feel the richness!" : "Feel the poverty!"}
+                {richestAddress === address ? "Feel the richness!" : "Feel the poverty!"}
               </button>
             </div>
           ) : (
@@ -328,7 +289,7 @@ const RichestReveal = () => {
       </Card>
 
       <AnimatePresence>
-        {showModal && (
+        {showModal && !isRevealing && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-50 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}

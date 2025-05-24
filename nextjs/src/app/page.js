@@ -36,7 +36,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                Richee
+                richee
               </motion.h1>
               <motion.p 
                 className="text-gray-400 max-w-2xl mx-auto text-lg"

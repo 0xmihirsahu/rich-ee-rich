@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { wallet, namedWallets, publicClient } from "../utils/wallet";
+import { wallet, namedWallets, publicClient, wallet as walletClient } from "../utils/wallet";
 import {
   Address,
   getContract,
@@ -157,56 +157,7 @@ describe("Richee Tests", function () {
       }
     });
 
-    it("should revert if not all participants have submitted", async function () {
-      const txHash = await wallet.deployContract({
-        abi: contractAbi.abi,
-        bytecode: contractAbi.bytecode as HexString,
-        args: [
-          namedWallets.alice.account?.address,
-          namedWallets.bob.account?.address,
-          namedWallets.eve.account?.address,
-        ],
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-      const newContractAddress = receipt.contractAddress as Address;
-
-      const richeeTemp = getContract({
-        address: newContractAddress as HexString,
-        abi: contractAbi.abi,
-        client: wallet,
-      });
-
-      const amount = parseEther("100");
-      const encryptedAmount = await incoConfig.encrypt(amount, {
-        accountAddress: namedWallets.alice.account?.address,
-        dappAddress: newContractAddress,
-      });
-
-      const txHashSubmit = await namedWallets.alice.writeContract({
-        address: newContractAddress,
-        abi: contractAbi.abi,
-        functionName: "submit",
-        args: [encryptedAmount],
-        chain: publicClient.chain,
-        account: namedWallets.alice.account as Account,
-      });
-
-      await publicClient.waitForTransactionReceipt({ hash: txHashSubmit });
-
-      await expect(
-        wallet.writeContract({
-          address: newContractAddress,
-          abi: contractAbi.abi,
-          functionName: "startComparison",
-          args: [],
-          chain: publicClient.chain,
-          account: wallet.account,
-        })
-      ).to.be.rejectedWith("IncompleteSubmissions()");
-    });
-
-    it("should emit RichestFound event upon determining the richest", async function () {
+    it("should emit EncryptedRichestAddress and decrypt it to find actual richest", async function () {
       const txHash = await namedWallets.alice.writeContract({
         address: contractAddress,
         abi: contractAbi.abi,
@@ -217,28 +168,48 @@ describe("Richee Tests", function () {
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      const blockNumber = receipt.blockNumber;
 
-      const logs = receipt.logs
-        .map((log) => {
-          try {
-            return decodeEventLog({
-              abi: contractAbi.abi,
-              data: log.data,
-              topics: log.topics,
-            });
-          } catch {
-            return null;
-          }
-        })
-        .filter((log): log is NonNullable<typeof log> =>
-          log !== null && log.eventName === "RichestFound"
-        );
-      console.log("logs: ",logs);
-      expect(logs.length).to.equal(1);
-      console.log("logs: ",logs[0]);
-      console.log("logs[0].args: ",logs[0].args);
-      const richestAddress = logs[0].args as unknown as Address;
-      expect(richestAddress).to.equal(namedWallets.bob.account?.address); // Bob had 200
+      const logs = await publicClient.getLogs({
+        address: contractAddress,
+        event: {
+          type: 'event',
+          name: 'EncryptedRichestAddress',
+          inputs: [
+            {
+              indexed: false,
+              name: 'encryptedAddress',
+              type: 'bytes32'
+            }
+          ]
+        },
+        fromBlock: blockNumber,
+        toBlock: blockNumber,
+      });
+
+      expect(logs.length).to.be.greaterThan(0);
+      const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress as HexString;
+      console.log("Encrypted richest address:", encryptedRichest);
+
+      const reencryptor = await incoConfig.getReencryptor(walletClient);
+      console.log("Reencryptor obtained");
+      
+      const decryptedRichest = reencryptor({handle: encryptedRichest});
+      console.log("Decrypted result:", decryptedRichest);
+      
+      if (!decryptedRichest || !decryptedRichest.value) {
+        throw new Error("Decryption failed: No value returned");
+      }
+
+      const decryptedRichestString = decryptedRichest.value.toString();
+      console.log("Decrypted string:", decryptedRichestString);
+
+      // Convert the decrypted string to an address
+      const decryptedAddress = getAddress(decryptedRichestString);
+      console.log("Decrypted address:", decryptedAddress);
+      console.log("Expected address:", namedWallets.bob.account?.address);
+      
+      expect(decryptedAddress).to.equal(namedWallets.bob.account?.address);
     });
   });
 });

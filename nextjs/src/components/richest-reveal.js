@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, usePublicClient, useWriteContract, useWatchContractEvent } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract, useWalletClient } from "wagmi";
 import { Trophy } from "lucide-react";
 import { RICHEE_CONTRACT_ADDRESS, RICHEE_ABI } from "@/utils/config";
 import Card from "@/components/ui/card";
 import TextScramble from "@/components/text-scramble";
 import { motion, AnimatePresence } from 'framer-motion';
+import { supportedChains } from '@inco/js';
+import { Lightning } from "@inco/js/lite";
+import { getAddress } from "viem";
 
 const RichestReveal = () => {
   const { address } = useAccount();
@@ -24,9 +27,12 @@ const RichestReveal = () => {
   const [showScramble, setShowScramble] = useState(false);
   const [displayText, setDisplayText] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [shouldShowModal, setShouldShowModal] = useState(false);
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+  const incoConfig = Lightning.latest('testnet', supportedChains.baseSepolia);
 
   // Fetch participant addresses
   const fetchParticipants = async () => {
@@ -78,48 +84,52 @@ const RichestReveal = () => {
     }
   };
 
-  // Function to check if the result has been finalized and get the richest address
-  const checkFinalizedAndGetRichest = async () => {
+  // Function to get the richest address from event logs
+  const getRichestAddress = async () => {
     try {
-      const finalized = await publicClient.readContract({
+      const logs = await publicClient.getLogs({
         address: RICHEE_CONTRACT_ADDRESS,
-        abi: RICHEE_ABI,
-        functionName: "isFinalized",
+        event: {
+          type: 'event',
+          name: 'EncryptedRichestAddress',
+          inputs: [
+            {
+              indexed: false,
+              name: 'encryptedAddress',
+              type: 'bytes32'
+            }
+          ]
+        },
+        fromBlock: 'earliest',
+        toBlock: 'latest'
       });
-      
-      if (finalized) {
-        // Get the richest address from event logs
-        const logs = await publicClient.getLogs({
-          address: RICHEE_CONTRACT_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'RichestFound',
-            inputs: [
-              {
-                indexed: true,
-                name: 'richest',
-                type: 'address'
-              }
-            ]
-          },
-          fromBlock: 'earliest',
-          toBlock: 'latest'
-        });
+
+      if (logs.length > 0) {
+        const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
+        console.log("encryptedRichest:", encryptedRichest);
+        const reencryptor = await incoConfig.getReencryptor(walletClient);
+        const decryptedRichest = await reencryptor({handle: encryptedRichest});
+        console.log("decryptedRichest:", decryptedRichest);
         
-        if (logs.length > 0) {
-          const richest = logs[logs.length - 1].args.richest;
-          setRichestAddress(richest);
-          setIsFinalized(true);
-          setShowScramble(true);
-          setShowModal(true);
-          typeResultMessage();
-          return true;
-        }
+        // Convert the decrypted number to an Ethereum address
+        const decryptedNumber = decryptedRichest.value.toString();
+        console.log("decryptedNumber:", decryptedNumber);
+        
+        // Convert to hex and ensure it's 40 characters (20 bytes)
+        const hexAddress = BigInt(decryptedNumber).toString(16).padStart(40, '0');
+        const richest = getAddress('0x' + hexAddress);
+        console.log("richest address:", richest);
+        
+        setRichestAddress(richest);
+        setIsFinalized(true);
+        setShowScramble(true);
+        setShouldShowModal(true);
+      } else {
+        setError("No event logs found. Please try again.");
       }
-      return finalized;
     } catch (error) {
-      console.error("Error checking finalization:", error);
-      return false;
+      console.error("Error getting richest address:", error);
+      setError("Failed to fetch event logs. Please try again.");
     }
   };
 
@@ -130,62 +140,134 @@ const RichestReveal = () => {
     setIsRevealing(true);
 
     try {
-      // First check if already finalized
-      const isAlreadyFinalized = await checkFinalizedAndGetRichest();
-      
-      if (!isAlreadyFinalized) {
+      // Check if already finalized
+      const isFinalized = await publicClient.readContract({
+        address: RICHEE_CONTRACT_ADDRESS,
+        abi: RICHEE_ABI,
+        functionName: "isFinalized",
+      });
+
+      if (isFinalized) {
+        try {
+          // Get current block number
+          const currentBlock = await publicClient.getBlockNumber();
+          // Look back 1000 blocks for the event
+          const fromBlock = currentBlock - 3000n;
+          
+          const logs = await publicClient.getLogs({
+            address: RICHEE_CONTRACT_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'EncryptedRichestAddress',
+              inputs: [
+                {
+                  indexed: false,
+                  name: 'encryptedAddress',
+                  type: 'bytes32'
+                }
+              ]
+            },
+            fromBlock,
+            toBlock: currentBlock
+          });
+
+          if (logs.length > 0) {
+            const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
+            console.log("encryptedRichest:", encryptedRichest);
+            const reencryptor = await incoConfig.getReencryptor(walletClient);
+            const decryptedRichest = await reencryptor({handle: encryptedRichest});
+            console.log("decryptedRichest:", decryptedRichest);
+            
+            // Convert the decrypted number to an Ethereum address
+            const decryptedNumber = decryptedRichest.value.toString();
+            console.log("decryptedNumber:", decryptedNumber);
+            
+            // Convert to hex and ensure it's 40 characters (20 bytes)
+            const hexAddress = BigInt(decryptedNumber).toString(16).padStart(40, '0');
+            const richest = getAddress('0x' + hexAddress);
+            console.log("richest address:", richest);
+            
+            setRichestAddress(richest);
+            setIsFinalized(true);
+            setShowScramble(true);
+            setShouldShowModal(true);
+          } else {
+            setError("No event logs found. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error fetching logs:", error);
+          setError("Failed to fetch event logs. Please try again.");
+        }
+      } else {
+        // Start comparison
         const hash = await writeContractAsync({
           address: RICHEE_CONTRACT_ADDRESS,
           abi: RICHEE_ABI,
           functionName: "startComparison",
         });
 
-        const transaction = await publicClient.waitForTransactionReceipt({
+        const receipt = await publicClient.waitForTransactionReceipt({
           hash: hash,
         });
 
-        if (transaction.status !== "success") {
-          throw new Error("Transaction failed");
-        }
+        if (receipt.status === "success") {
+          // Get the event from transaction logs
+          const parsedLogs = parseEventLogs({
+            abi: RICHEE_ABI,
+            logs: receipt.logs,
+          });
 
-        // Start polling for the result
-        pollForResult();
-      } else {
-        setIsLoading(false);
-        setIsRevealing(false);
+          const richestEvent = parsedLogs.find(
+            (log) => log.eventName === "EncryptedRichestAddress"
+          );
+
+          if (richestEvent && richestEvent.args) {
+            const encryptedRichest = richestEvent.args.encryptedAddress;
+            const reencryptor = await incoConfig.getReencryptor(walletClient);
+            const decryptedNumber = await reencryptor({handle: encryptedRichest});
+            const richest = getAddress('0x' + decryptedNumber.toString(16).padStart(40, '0'));
+            console.log("Setting richest address to:", richest);
+            
+            setRichestAddress(richest);
+            setIsFinalized(true);
+            setShowScramble(true);
+            setShouldShowModal(true);
+          } else {
+            setError("No event found in transaction logs. Please try again.");
+          }
+        } else {
+          setError("Transaction failed. Please try again.");
+        }
       }
     } catch (error) {
       console.error("Transaction failed:", error);
-      setError(error.message || "Transaction failed");
+      setError(error.message || "Transaction failed. Please try again.");
+    } finally {
       setIsLoading(false);
       setIsRevealing(false);
     }
   };
 
-  // Function to poll for the result
-  const pollForResult = async () => {
-    const checkResult = async () => {
-      try {
-        const finalized = await checkFinalizedAndGetRichest();
-        if (!finalized) {
-          setTimeout(checkResult, 2000); // Poll every 2 seconds
-        } else {
-          setIsLoading(false);
-          setIsRevealing(false);
-        }
-      } catch (error) {
-        console.error("Error polling for result:", error);
-        setIsLoading(false);
-        setIsRevealing(false);
-      }
-    };
-
-    checkResult();
-  };
+  // Effect to handle modal and message when richestAddress changes
+  useEffect(() => {
+    if (richestAddress && shouldShowModal) {
+      console.log("Effect triggered - Richest address:", richestAddress);
+      console.log("User address:", address);
+      setShowModal(true);
+      typeResultMessage();
+      setShouldShowModal(false);
+    }
+  }, [richestAddress, shouldShowModal, address]);
 
   // Function to type out the result message
   const typeResultMessage = useCallback(() => {
+    console.log("typeResultMessage called");
+    console.log("richestAddress in typeResultMessage:", richestAddress);
+    console.log("address in typeResultMessage:", address);
+    
     const isRichest = richestAddress?.toLowerCase() === address?.toLowerCase();
+    console.log("Is richest:", isRichest);
+    
     const text = isRichest ? "YOU ARE THE RICHEST!🤑" : "YOU'RE BROKE AF!😭";
     let currentIndex = 0;
 
@@ -204,12 +286,8 @@ const RichestReveal = () => {
   useEffect(() => {
     fetchParticipants();
     checkAllSubmitted();
-    // Set up polling interval for submission status only
-    const interval = setInterval(() => {
-      checkAllSubmitted();
-    }, 5000);
+    const interval = setInterval(checkAllSubmitted, 5000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClose = useCallback(() => {

@@ -7,7 +7,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 /// @title Richee - Millionaire's Dilemma using Inco's Lightning encrypted types
 /// @notice This contract allows three participants to privately submit their wealth,
 ///         and then determines who is the richest without revealing individual values.
-/// @dev Relies on Inco's TEE to perform encrypted comparisons and decryption.
+/// @dev Relies on Inco's TEE to perform encrypted comparisons and encryption.
 
 contract Richee is ReentrancyGuard {
     // Immutable participant addresses
@@ -27,15 +27,14 @@ contract Richee is ReentrancyGuard {
     /// @notice Emitted when a participant submits their encrypted wealth
     event WealthSubmitted(address indexed sender);
 
-    /// @notice Emitted when the richest participant is revealed
-    event RichestFound(address indexed richest);
+    /// @notice Emitted with the encrypted richest address (only decryptable by Alice, Bob, and Eve)
+    event EncryptedRichestAddress(euint256 encryptedAddress);
 
     /// @dev Errors for common failure scenarios
     error InvalidParticipant();
     error DuplicateSubmission();
     error IncompleteSubmissions();
     error AlreadyProcessed();
-    error InvalidDecryptionResult();
 
     /// @param _alice Address of first participant
     /// @param _bob Address of second participant
@@ -78,44 +77,34 @@ contract Richee is ReentrancyGuard {
             revert IncompleteSubmissions();
         }
 
-        // Encode participant indices (0 = alice, 1 = bob, 2 = eve)
-        euint256 idx1 = e.asEuint256(0);
-        euint256 idx2 = e.asEuint256(1);
-        euint256 idx3 = e.asEuint256(2);
+        // Encode participant addresses as euint256
+        euint256 addr1 = e.asEuint256(uint256(uint160(alice)));
+        euint256 addr2 = e.asEuint256(uint256(uint160(bob)));
+        euint256 addr3 = e.asEuint256(uint256(uint160(eve)));
 
-        // Initialize highest wealth and richest index
+        // Initialize highest wealth and richest address
         euint256 highest = encryptedWealth[alice];
-        euint256 richestIdx = idx1;
+        euint256 richest = addr1;
 
         // Compare Bob's wealth
         ebool b2 = e.ge(encryptedWealth[bob], highest);
         highest = e.select(b2, encryptedWealth[bob], highest);
-        richestIdx = e.select(b2, idx2, richestIdx);
+        richest = e.select(b2, addr2, richest);
 
         // Compare Eve's wealth
         ebool b3 = e.ge(encryptedWealth[eve], highest);
         highest = e.select(b3, encryptedWealth[eve], highest);
-        richestIdx = e.select(b3, idx3, richestIdx);
+        richest = e.select(b3, addr3, richest);
 
-        // Authorize and request decryption of final result
-        e.allow(richestIdx, address(this));
-        e.requestDecryption(richestIdx, this._revealRichest.selector, "");
-    }
+        // Allow only Alice, Bob, and Eve to decrypt the richest address
+        e.allow(richest, alice);
+        e.allow(richest, bob);
+        e.allow(richest, eve);
 
-    /// @notice Callback from Inco TEE to finalize the richest
-    /// @param /* id */ unused ID field
-    /// @param decrypted The index of the richest participant (0 = alice, 1 = bob, 2 = eve)
-    /// @param /* metadata */ unused
-    function _revealRichest(uint256, uint256 decrypted, bytes calldata) external returns (bool) {
-        if (resultPosted) return true;
-        if (decrypted > 2) revert InvalidDecryptionResult();
-
-        // Resolve richest address from index
-        address richest = decrypted == 0 ? alice : (decrypted == 1 ? bob : eve);
+        // Emit encrypted address
+        emit EncryptedRichestAddress(richest);
 
         resultPosted = true;
-        emit RichestFound(richest);
-        return true;
     }
 
     /// @notice Returns the number of participants who have submitted their wealth

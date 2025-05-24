@@ -7,6 +7,7 @@ import EncryptedSubmission from "@/components/encrypted-submission";
 import RichestReveal from "@/components/richest-reveal";
 import CipherBackground from "@/components/cipher-background";
 import { motion } from "framer-motion";
+import TextScramble from "@/components/text-scramble";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -19,7 +20,7 @@ export default function Home() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-900/0 text-white">
+    <div className="min-h-screen py-24 bg-gray-900/0 text-white">
       <CipherBackground hover={true} />
       <div className="max-w-6xl mx-auto p-6">
         {isConnected ? (
@@ -97,7 +98,7 @@ export default function Home() {
             </motion.div>
 
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl w-full"
+              className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-3xl w-full"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
@@ -125,7 +126,7 @@ export default function Home() {
                 while maintaining complete privacy of individual values.
               </p>
             </motion.div>
-
+            <TextScramble scrambleOnHover={true} scrambleOnMount={false} scrambleDelay={100}>
             <motion.button
               onClick={() => document.querySelector('button')?.click()}
               className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-4 rounded-none text-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105"
@@ -135,8 +136,11 @@ export default function Home() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Connect Wallet to Play
+             
+                Enter the cipher world — connect wallet.
+              
             </motion.button>
+            </TextScramble>
           </motion.div>
         )}
       </div>

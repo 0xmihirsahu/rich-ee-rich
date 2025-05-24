@@ -1,5 +1,5 @@
 export const RICHEE_CONTRACT_ADDRESS =
-  "0x32dbcc4199a98811602b69f9fa1e5c3c9ca73d8e"; // Replace with actual contract address
+  "0x1723ab60c0eb85bbe5f186b13e3d040fff04008a"; // Replace with actual contract address
 
 export const RICHEE_ABI = [
   {

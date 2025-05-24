@@ -27,8 +27,8 @@ const CipherBackground = ({
 
   const colorSchemes = {
     blue: {
-      primary: isDark ? 'rgba(64, 156, 255, 0.3)' : 'rgba(0, 112, 243, 0.8)',
-      secondary: isDark ? 'rgba(100, 180, 255, 0.2)' : 'rgba(30, 136, 229, 0.5)',
+      primary: isDark ? 'rgba(64, 156, 255, 0.35)' : 'rgba(0, 112, 243, 0.8)',
+      secondary: isDark ? 'rgba(100, 180, 255, 0.21)' : 'rgba(30, 136, 229, 0.5)',
       dim: isDark ? 'rgba(50, 130, 220, 0.2)' : 'rgba(13, 71, 161, 0.2)',
       background: isDark ? 'rgba(5, 5, 5, 0.95)' : 'rgba(245, 245, 245, 0.05)',
     },
@@ -79,7 +79,7 @@ const CipherBackground = ({
   const getRandomCharacter = () => {
     if (Math.random() < 0.05) return ' ';
     const rand = Math.random();
-    if (rand < 0.4) return characterSets.matrix.charAt(Math.floor(Math.random() * characterSets.matrix.length));
+    if (rand < 0.2) return characterSets.matrix.charAt(Math.floor(Math.random() * characterSets.matrix.length));
     if (rand < 0.6) return characterSets.currency.charAt(Math.floor(Math.random() * characterSets.currency.length));
     if (rand < 0.8) return characterSets.crypto.charAt(Math.floor(Math.random() * characterSets.crypto.length));
     return characterSets.punctuation.charAt(Math.floor(Math.random() * characterSets.punctuation.length));

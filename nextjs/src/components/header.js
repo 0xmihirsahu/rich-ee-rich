@@ -36,7 +36,7 @@ export default function Header() {
 
   return (
     <motion.header 
-      className="bg-gray-900/50 backdrop-blur-md sticky top-0 z-50 border-b border-gray-800/50"
+      className="fixed top-0 left-0 right-0 bg-gray-900/50 backdrop-blur-md z-50 border-b border-gray-800/50"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
@@ -54,7 +54,7 @@ export default function Header() {
             </h1>
             <div className="hidden md:flex items-center gap-2 text-sm text-gray-400">
               <Cpu className="w-4 h-4 text-blue-400" />
-              <span>Powered by Inco TEE</span>
+              <span>Powered by Inco Lightning</span>
             </div>
           </motion.div>
 

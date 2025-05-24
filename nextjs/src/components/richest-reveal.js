@@ -9,7 +9,7 @@ import TextScramble from "@/components/text-scramble";
 import { motion, AnimatePresence } from 'framer-motion';
 import { supportedChains } from '@inco/js';
 import { Lightning } from "@inco/js/lite";
-import { getAddress } from "viem";
+import { getAddress, parseEventLogs } from "viem";
 
 const RichestReveal = () => {
   const { address } = useAccount();
@@ -33,6 +33,133 @@ const RichestReveal = () => {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const incoConfig = Lightning.latest('testnet', supportedChains.baseSepolia);
+
+  // Add these helper functions at the top level of the component
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const pollForResult = async (maxAttempts = 10, interval = 3000) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      console.log(`Polling attempt ${attempt}/${maxAttempts}`);
+      
+      try {
+        // Try to get the result from contract state first
+        const encryptedRichest = await publicClient.readContract({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "encryptedRichest",
+        });
+
+        if (encryptedRichest) {
+          console.log("Got encryptedRichest from contract:", encryptedRichest);
+          const reencryptor = await incoConfig.getReencryptor(walletClient);
+          const decryptedRichest = await reencryptor({handle: encryptedRichest});
+          console.log("decryptedRichest:", decryptedRichest);
+          
+          const decryptedNumber = decryptedRichest.value.toString();
+          const richest = getAddress('0x' + decryptedNumber.toString(16).padStart(40, '0'));
+          console.log("Setting richest address to:", richest);
+          
+          return richest;
+        }
+      } catch (error) {
+        console.log(`Attempt ${attempt} failed to get result from contract:`, error);
+      }
+
+      // If contract state failed, try recent blocks
+      try {
+        const currentBlock = await publicClient.getBlockNumber();
+        const fromBlock = currentBlock - 50n;
+        
+        const logs = await publicClient.getLogs({
+          address: RICHEE_CONTRACT_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'EncryptedRichestAddress',
+            inputs: [
+              {
+                indexed: false,
+                name: 'encryptedAddress',
+                type: 'bytes32'
+              }
+            ]
+          },
+          fromBlock,
+          toBlock: currentBlock
+        });
+
+        if (logs.length > 0) {
+          const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
+          console.log("Got encryptedRichest from logs:", encryptedRichest);
+          const reencryptor = await incoConfig.getReencryptor(walletClient);
+          const decryptedRichest = await reencryptor({handle: encryptedRichest});
+          console.log("decryptedRichest:", decryptedRichest);
+          
+          const decryptedNumber = decryptedRichest.value.toString();
+          const richest = getAddress('0x' + decryptedNumber.toString(16).padStart(40, '0'));
+          console.log("Setting richest address to:", richest);
+          
+          return richest;
+        }
+      } catch (error) {
+        console.log(`Attempt ${attempt} failed to get result from logs:`, error);
+      }
+
+      // If this wasn't the last attempt, wait before trying again
+      if (attempt < maxAttempts) {
+        console.log(`Waiting ${interval}ms before next attempt...`);
+        await sleep(interval);
+      }
+    }
+    
+    throw new Error("Failed to get result after maximum attempts");
+  };
+
+  const fetchEventLogs = async (fromBlock, toBlock, retries = 8, initialDelay = 3000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        console.log(`Attempt ${i + 1} to fetch logs from block ${fromBlock} to ${toBlock}`);
+        const logs = await publicClient.getLogs({
+          address: RICHEE_CONTRACT_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'EncryptedRichestAddress',
+            inputs: [
+              {
+                indexed: false,
+                name: 'encryptedAddress',
+                type: 'bytes32'
+              }
+            ]
+          },
+          fromBlock,
+          toBlock
+        });
+
+        if (logs.length > 0) {
+          console.log(`Found ${logs.length} logs on attempt ${i + 1}`);
+          return logs;
+        }
+
+        // If no logs found and we have retries left, wait and try again
+        if (i < retries - 1) {
+          const delay = initialDelay * Math.pow(1.5, i); // Less aggressive exponential backoff
+          console.log(`No logs found, waiting ${delay}ms before retry...`);
+          await sleep(delay);
+          continue;
+        }
+      } catch (error) {
+        console.error(`Attempt ${i + 1} failed:`, error);
+        if (i < retries - 1) {
+          const delay = initialDelay * Math.pow(1.5, i);
+          console.log(`Error occurred, waiting ${delay}ms before retry...`);
+          await sleep(delay);
+          continue;
+        }
+        throw error;
+      }
+    }
+    return [];
+  };
 
   // Fetch participant addresses
   const fetchParticipants = async () => {
@@ -84,53 +211,49 @@ const RichestReveal = () => {
     }
   };
 
-  // Function to get the richest address from event logs
-  const getRichestAddress = async () => {
-    try {
-      const logs = await publicClient.getLogs({
-        address: RICHEE_CONTRACT_ADDRESS,
-        event: {
-          type: 'event',
-          name: 'EncryptedRichestAddress',
-          inputs: [
-            {
-              indexed: false,
-              name: 'encryptedAddress',
-              type: 'bytes32'
-            }
-          ]
-        },
-        fromBlock: 'earliest',
-        toBlock: 'latest'
-      });
+  // Add this helper function for fetching events with retries
+  const fetchEventWithRetry = async (fromBlock, toBlock, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        console.log(`Attempt ${i + 1} to fetch event logs`);
+        const logs = await publicClient.getLogs({
+          address: RICHEE_CONTRACT_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'EncryptedRichestAddress',
+            inputs: [
+              {
+                indexed: false,
+                name: 'encryptedAddress',
+                type: 'bytes32'
+              }
+            ]
+          },
+          fromBlock,
+          toBlock
+        });
 
-      if (logs.length > 0) {
-        const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
-        console.log("encryptedRichest:", encryptedRichest);
-        const reencryptor = await incoConfig.getReencryptor(walletClient);
-        const decryptedRichest = await reencryptor({handle: encryptedRichest});
-        console.log("decryptedRichest:", decryptedRichest);
-        
-        // Convert the decrypted number to an Ethereum address
-        const decryptedNumber = decryptedRichest.value.toString();
-        console.log("decryptedNumber:", decryptedNumber);
-        
-        // Convert to hex and ensure it's 40 characters (20 bytes)
-        const hexAddress = BigInt(decryptedNumber).toString(16).padStart(40, '0');
-        const richest = getAddress('0x' + hexAddress);
-        console.log("richest address:", richest);
-        
-        setRichestAddress(richest);
-        setIsFinalized(true);
-        setShowScramble(true);
-        setShouldShowModal(true);
-      } else {
-        setError("No event logs found. Please try again.");
+        if (logs.length > 0) {
+          console.log(`Found ${logs.length} logs on attempt ${i + 1}`);
+          return logs;
+        }
+
+        // If no logs found and we have retries left, wait and try again
+        if (i < maxRetries - 1) {
+          const delay = 2000 * (i + 1); // 2s, 4s, 6s
+          console.log(`No logs found, waiting ${delay}ms before retry...`);
+          await sleep(delay);
+        }
+      } catch (error) {
+        console.error(`Attempt ${i + 1} failed:`, error);
+        if (i < maxRetries - 1) {
+          const delay = 2000 * (i + 1);
+          console.log(`Error occurred, waiting ${delay}ms before retry...`);
+          await sleep(delay);
+        }
       }
-    } catch (error) {
-      console.error("Error getting richest address:", error);
-      setError("Failed to fetch event logs. Please try again.");
     }
+    return [];
   };
 
   // Function to start the comparison
@@ -151,25 +274,10 @@ const RichestReveal = () => {
         try {
           // Get current block number
           const currentBlock = await publicClient.getBlockNumber();
-          // Look back 1000 blocks for the event
+          // Look back 3000 blocks for the event
           const fromBlock = currentBlock - 3000n;
           
-          const logs = await publicClient.getLogs({
-            address: RICHEE_CONTRACT_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'EncryptedRichestAddress',
-              inputs: [
-                {
-                  indexed: false,
-                  name: 'encryptedAddress',
-                  type: 'bytes32'
-                }
-              ]
-            },
-            fromBlock,
-            toBlock: currentBlock
-          });
+          const logs = await fetchEventWithRetry(fromBlock, currentBlock);
 
           if (logs.length > 0) {
             const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
@@ -196,7 +304,7 @@ const RichestReveal = () => {
           }
         } catch (error) {
           console.error("Error fetching logs:", error);
-          setError("Failed to fetch event logs. Please try again.");
+          setError("Failed to decrypt the richest address. Please try again.");
         }
       } else {
         // Start comparison
@@ -206,11 +314,15 @@ const RichestReveal = () => {
           functionName: "startComparison",
         });
 
+        // Wait for transaction receipt
         const receipt = await publicClient.waitForTransactionReceipt({
           hash: hash,
         });
 
         if (receipt.status === "success") {
+          // Wait for the event to be indexed
+          await sleep(5000);
+
           // Get the event from transaction logs
           const parsedLogs = parseEventLogs({
             abi: RICHEE_ABI,
@@ -224,7 +336,8 @@ const RichestReveal = () => {
           if (richestEvent && richestEvent.args) {
             const encryptedRichest = richestEvent.args.encryptedAddress;
             const reencryptor = await incoConfig.getReencryptor(walletClient);
-            const decryptedNumber = await reencryptor({handle: encryptedRichest});
+            const decryptedRichest = await reencryptor({handle: encryptedRichest});
+            const decryptedNumber = decryptedRichest.value.toString();
             const richest = getAddress('0x' + decryptedNumber.toString(16).padStart(40, '0'));
             console.log("Setting richest address to:", richest);
             
@@ -233,7 +346,26 @@ const RichestReveal = () => {
             setShowScramble(true);
             setShouldShowModal(true);
           } else {
-            setError("No event found in transaction logs. Please try again.");
+            // If no event in receipt logs, try fetching from recent blocks with retries
+            const currentBlock = await publicClient.getBlockNumber();
+            const fromBlock = currentBlock - 10n; // Look back 10 blocks
+            
+            const logs = await fetchEventWithRetry(fromBlock, currentBlock);
+
+            if (logs.length > 0) {
+              const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
+              const reencryptor = await incoConfig.getReencryptor(walletClient);
+              const decryptedRichest = await reencryptor({handle: encryptedRichest});
+              const decryptedNumber = decryptedRichest.value.toString();
+              const richest = getAddress('0x' + decryptedNumber.toString(16).padStart(40, '0'));
+              
+              setRichestAddress(richest);
+              setIsFinalized(true);
+              setShowScramble(true);
+              setShouldShowModal(true);
+            } else {
+              setError("No event found in transaction logs. Please try again.");
+            }
           }
         } else {
           setError("Transaction failed. Please try again.");
@@ -300,7 +432,7 @@ const RichestReveal = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center">
             {/* <Trophy className="mr-3 text-yellow-400" /> */}
-            Richee Rich 💰
+            💰 Richee Rich 
           </h2>
         </div>
 
@@ -351,14 +483,16 @@ const RichestReveal = () => {
               <button
                 onClick={startComparison}
                 disabled={!allSubmitted || isLoading}
-                className="w-full py-3 bg-green-600 text-white rounded-none hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   </div>
                 ) : (
-                  "Reveal Richest"
+                  <TextScramble scrambleOnHover={true} scrambleDelay={100}>
+                    Reveal Richest
+                  </TextScramble>
                 )}
               </button>
             </div>

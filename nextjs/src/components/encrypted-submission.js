@@ -17,6 +17,7 @@ const EncryptedSubmission = () => {
   const [error, setError] = useState("");
   const [submissionCount, setSubmissionCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const TOTAL_PARTICIPANTS = 3;
 
   const chainId = supportedChains.baseSepolia
@@ -25,27 +26,37 @@ const EncryptedSubmission = () => {
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
-  // Function to fetch submission count
-  const fetchSubmissionCount = async () => {
+  // Function to fetch submission count and user's submission status
+  const fetchSubmissionStatus = async () => {
     try {
-      const count = await publicClient.readContract({
-        address: RICHEE_CONTRACT_ADDRESS,
-        abi: RICHEE_ABI,
-        functionName: "getSubmissionCount",
-      });
+      const [count, submitted] = await Promise.all([
+        publicClient.readContract({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "getSubmissionCount",
+        }),
+        publicClient.readContract({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "hasSubmitted",
+          args: [address],
+        })
+      ]);
       setSubmissionCount(Number(count));
+      setHasSubmitted(submitted);
     } catch (error) {
-      console.error("Error fetching submission count:", error);
+      console.error("Error fetching submission status:", error);
     }
   };
 
   useEffect(() => {
-    fetchSubmissionCount();
-    // Set up an interval to refresh the count
-    const interval = setInterval(fetchSubmissionCount, 10000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (address) {
+      fetchSubmissionStatus();
+      // Set up an interval to refresh the status
+      const interval = setInterval(fetchSubmissionStatus, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [address]);
 
   const submitEncryptedAmount = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -78,7 +89,7 @@ const EncryptedSubmission = () => {
         throw new Error("Transaction failed");
       }
 
-      await fetchSubmissionCount();
+      await fetchSubmissionStatus();
       setAmount("");
     } catch (error) {
       console.error("Transaction failed:", error);
@@ -110,10 +121,10 @@ const EncryptedSubmission = () => {
             <Shield className="w-4 h-4 mr-2 text-blue-400" />
             Encrypted Amount Submissions
           </span>
-          <span className="font-semibold text-blue-400 flex items-center">
+          <span className="font-semibold flex items-center text-blue-400">
             {submissionCount} / {TOTAL_PARTICIPANTS}
             {submissionCount === TOTAL_PARTICIPANTS && (
-              <span className="text-green-400 ml-2 flex items-center">
+              <span className="text-green-400 ml-2">
                 <CheckCircle className="w-4 h-4" />
               </span>
             )}
@@ -133,66 +144,74 @@ const EncryptedSubmission = () => {
       </motion.div>
 
       <div className="space-y-4">
-        <div className="relative">
-          <label htmlFor="amount" className="text-sm font-medium text-gray-300 mb-2 flex items-center">
-            <Lock className="w-4 h-4 mr-2 text-blue-400" />
-            Your Wealth Amount
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              id="amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-4 py-3 focus:outline-none bg-gray-700/50 border border-gray-600/50 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-              placeholder="Enter your wealth amount"
-              disabled={isLoading}
-            />
-            <div className="absolute inset-0 pointer-events-none">
-              <CipherBackground density="high" colorScheme="blue" hover={false} />
-            </div>
+        {hasSubmitted ? (
+          <div className="bg-green-900/20 border border-green-500 text-green-400 p-3 rounded-none text-center">
+            You have already submitted your encrypted amount.
           </div>
-        </div>
-
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-red-900/20 border border-red-500 text-red-400 p-3 rounded-none text-center"
-            >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <motion.button
-          onClick={submitEncryptedAmount}
-          disabled={!amount || Number(amount) <= 0 || isLoading}
-          className={`w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-none transition-all duration-300 ${
-            !amount || Number(amount) <= 0 || isLoading
-              ? 'opacity-50 cursor-not-allowed'
-              : 'hover:from-blue-600 hover:to-blue-700'
-          }`}
-          whileHover={!isLoading && amount && Number(amount) > 0 ? { scale: 1.02 } : {}}
-          whileTap={!isLoading && amount && Number(amount) > 0 ? { scale: 0.98 } : {}}
-        >
-          {isLoading ? (
-            <div className="flex items-center justify-center">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-              />
+        ) : (
+          <>
+            <div className="relative">
+              <label htmlFor="amount" className="text-sm font-medium text-gray-300 mb-2 flex items-center">
+                <Lock className="w-4 h-4 mr-2 text-blue-400" />
+                Your Wealth Amount
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  id="amount"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full px-4 py-3 focus:outline-none bg-gray-700/50 border border-gray-600/50 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                  placeholder="Enter your wealth amount"
+                  disabled={isLoading}
+                />
+                <div className="absolute inset-0 pointer-events-none">
+                  <CipherBackground density="high" colorScheme="blue" hover={false} />
+                </div>
+              </div>
             </div>
-          ) : (
-            <span className="flex items-center justify-center">
-              <Cpu className="w-4 h-4 mr-2" />
-              Submit Encrypted Amount
-            </span>
-          )}
-        </motion.button>
+
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-red-900/20 border border-red-500 text-red-400 p-3 rounded-none text-center"
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.button
+              onClick={submitEncryptedAmount}
+              disabled={!amount || Number(amount) <= 0 || isLoading}
+              className={`w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-none transition-all duration-300 ${
+                !amount || Number(amount) <= 0 || isLoading
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:from-blue-600 hover:to-blue-700'
+              }`}
+              whileHover={!isLoading && amount && Number(amount) > 0 ? { scale: 1.02 } : {}}
+              whileTap={!isLoading && amount && Number(amount) > 0 ? { scale: 0.98 } : {}}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                  />
+                </div>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <Cpu className="w-4 h-4 mr-2" />
+                  Submit Encrypted Amount
+                </span>
+              )}
+            </motion.button>
+          </>
+        )}
       </div>
     </Card>
   );

@@ -12,9 +12,15 @@ export default function TextScramble({
   const containerRef = useRef(null);
   const [isScrambling, setIsScrambling] = useState(scrambleOnMount);
   const originalTexts = useRef(new Map());
+  const intervalRef = useRef(null);
 
   const scrambleText = async () => {
     if (!containerRef.current) return;
+    
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
     
     const textNodes = [];
     const walker = document.createTreeWalker(
@@ -37,7 +43,7 @@ export default function TextScramble({
     }
 
     let count = 0;
-    const scrambleInterval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       textNodes.forEach((node) => {
         const original = originalTexts.current.get(node) || "";
         const scrambled = Array.from(original)
@@ -52,25 +58,36 @@ export default function TextScramble({
           node.textContent = originalTexts.current.get(node) || "";
         });
         setIsScrambling(false);
-        clearInterval(scrambleInterval);
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     }, scrambleDelay);
-
-    return () => clearInterval(scrambleInterval);
   };
 
   useEffect(() => {
     if (scrambleOnMount) {
       scrambleText();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
+    // Cleanup function
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [scrambleOnMount]);
 
   return (
     <div 
       ref={containerRef} 
       className="transition-all duration-500"
-      onMouseEnter={() => scrambleOnHover && scrambleText()}
+      onMouseEnter={() => {
+        if (scrambleOnHover && !isScrambling) {
+          setIsScrambling(true);
+          scrambleText();
+        }
+      }}
     >
       {children}
     </div>

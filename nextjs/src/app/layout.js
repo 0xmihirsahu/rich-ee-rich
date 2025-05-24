@@ -14,7 +14,7 @@ const fontUrbanist = Urbanist({
 
 export const metadata = {
   title: "Richee",
-  description: "Richee",
+  description: "Richee - The Millionaire's Dilemma",
 };
 
 export default function RootLayout({ children }) {

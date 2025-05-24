@@ -384,3 +384,141 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Inco Network for providing the Lightning encrypted types
 - Base Sepolia testnet for deployment
 - OpenZeppelin for security patterns
+
+## ⚙️ Step-by-Step Workflow
+
+### 1. Initial Setup and Participant Registration
+- **Contract Deployment**:
+  ```solidity
+  constructor(address _alice, address _bob, address _eve) {
+      require(_alice != address(0) && _bob != address(0) && _eve != address(0));
+      require(_alice != _bob && _alice != _eve && _bob != _eve);
+      alice = _alice;
+      bob = _bob;
+      eve = _eve;
+  }
+  ```
+- Three participants (Alice, Bob, Eve) are registered
+- Each participant gets a unique address in the contract
+- Contract is deployed on Base Sepolia testnet
+
+### 2. Wealth Submission Process
+- **Each participant prepares their wealth value**:
+  ```javascript
+  // Frontend preparation
+  const amount = parseEther("100"); // e.g., 100 ETH
+  const encryptedAmount = await incoConfig.encrypt(amount, {
+    accountAddress: userAddress,
+    dappAddress: contractAddress,
+  });
+  ```
+- **Participants submit encrypted values**:
+  ```solidity
+  function submit(bytes calldata encryptedValue) external {
+      // Validate participant
+      if (msg.sender != alice && msg.sender != bob && msg.sender != eve) {
+          revert InvalidParticipant();
+      }
+      
+      // Store encrypted value
+      euint256 value = e.newEuint256(encryptedValue, msg.sender);
+      e.allow(value, address(this));
+      encryptedWealth[msg.sender] = value;
+  }
+  ```
+- Each submission:
+  - Encrypts the wealth value using Inco's Lightning
+  - Grants permission to the contract
+  - Stores the encrypted value
+  - Emits a `WealthSubmitted` event
+
+### 3. Comparison Initiation
+- **Any participant can start the comparison**:
+  ```solidity
+  function startComparison() external {
+      // Validate all submissions
+      if (!hasSubmitted[alice] || !hasSubmitted[bob] || !hasSubmitted[eve]) {
+          revert IncompleteSubmissions();
+      }
+      
+      // Convert addresses to encrypted values
+      euint256 addr1 = e.asEuint256(uint256(uint160(alice)));
+      euint256 addr2 = e.asEuint256(uint256(uint160(bob)));
+      euint256 addr3 = e.asEuint256(uint256(uint160(eve)));
+  }
+  ```
+- Contract:
+  - Verifies all participants have submitted
+  - Prepares encrypted address values
+  - Initializes comparison variables
+
+### 4. Encrypted Comparison Process
+- **Contract performs encrypted comparisons**:
+  ```solidity
+  // Compare Bob's wealth
+  ebool b2 = e.ge(encryptedWealth[bob], highest);
+  highest = e.select(b2, encryptedWealth[bob], highest);
+  richest = e.select(b2, addr2, richest);
+
+  // Compare Eve's wealth
+  ebool b3 = e.ge(encryptedWealth[eve], highest);
+  highest = e.select(b3, encryptedWealth[eve], highest);
+  richest = e.select(b3, addr3, richest);
+  ```
+- Process:
+  - Uses `e.ge()` for encrypted greater-than-or-equal comparison
+  - Uses `e.select()` for encrypted conditional selection
+  - All operations happen in encrypted form
+  - No individual wealth values are revealed
+
+### 5. Result Emission and Access Control
+- **Contract emits encrypted result**:
+  ```solidity
+  // Allow decryption by participants
+  e.allow(richest, alice);
+  e.allow(richest, bob);
+  e.allow(richest, eve);
+
+  // Emit encrypted result
+  emit EncryptedRichestAddress(richest);
+  resultPosted = true;
+  ```
+- Security measures:
+  - Result is encrypted
+  - Only participants can decrypt
+  - Contract marks result as finalized
+
+### 6. Result Decryption and Display
+- **Frontend decrypts the result**:
+  ```javascript
+  // Get encrypted result from event
+  const encryptedRichest = event.args.encryptedAddress;
+  
+  // Decrypt using reencryptor
+  const reencryptor = await incoConfig.getReencryptor(walletClient);
+  const decryptedRichest = await reencryptor({handle: encryptedRichest});
+  
+  // Convert to address
+  const richestAddress = getAddress('0x' + decryptedRichest.value.toString(16).padStart(40, '0'));
+  ```
+- Process:
+  - Frontend listens for `EncryptedRichestAddress` event
+  - Uses Inco's reencryptor to decrypt the result
+  - Converts the decrypted value to an Ethereum address
+  - Displays the result to the user
+
+### 7. Privacy Guarantees
+- **Throughout the process**:
+  - Individual wealth values remain encrypted
+  - Comparisons happen in encrypted form
+  - Only the richest address is revealed
+  - No information about relative wealth is leaked
+  - Only participants can decrypt the result
+
+### 8. Security Measures
+- **Contract implements**:
+  - Reentrancy protection
+  - Participant validation
+  - Submission tracking
+  - Result finalization check
+  - Access control for decryption

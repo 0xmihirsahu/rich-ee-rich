@@ -5,10 +5,10 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/utils/cn';
 
 const CipherBackground = ({
-  hover = false,
+  hover = true,
   className,
   density = 'medium',
-  colorScheme = 'black',
+  colorScheme = 'blue',
 }) => {
   const canvasRef = useRef(null);
   const pointsRef = useRef([]);
@@ -27,10 +27,10 @@ const CipherBackground = ({
 
   const colorSchemes = {
     blue: {
-      primary: isDark ? 'rgba(64, 156, 255, 0.8)' : 'rgba(0, 112, 243, 0.8)',
-      secondary: isDark ? 'rgba(100, 180, 255, 0.5)' : 'rgba(30, 136, 229, 0.5)',
+      primary: isDark ? 'rgba(64, 156, 255, 0.3)' : 'rgba(0, 112, 243, 0.8)',
+      secondary: isDark ? 'rgba(100, 180, 255, 0.2)' : 'rgba(30, 136, 229, 0.5)',
       dim: isDark ? 'rgba(50, 130, 220, 0.2)' : 'rgba(13, 71, 161, 0.2)',
-      background: isDark ? 'rgba(10, 25, 41, 0.1)' : 'rgba(240, 247, 255, 0.1)',
+      background: isDark ? 'rgba(5, 5, 5, 0.95)' : 'rgba(245, 245, 245, 0.05)',
     },
     green: {
       primary: isDark ? 'rgba(72, 187, 120, 0.8)' : 'rgba(39, 174, 96, 0.8)',
@@ -62,7 +62,6 @@ const CipherBackground = ({
         dim: isDark ? 'rgba(70, 70, 70, 0.3)' : 'rgba(90, 90, 90, 0.3)',
         background: isDark ? 'rgba(5, 5, 5, 0.95)' : 'rgba(245, 245, 245, 0.05)',
     },
-
   };
 
   const colors = colorSchemes[colorScheme];
@@ -71,7 +70,7 @@ const CipherBackground = ({
   const characterSets = {
     matrix: '01',
     currency: '$£€₹₿₽¥',
-    crypto: '₿ΞĐŁɃ⟠ΞΦ',
+    crypto: '₿ΞĐŁɃ⟠Ξ',
     punctuation: '.;,?!*#%&',
   };
 
@@ -162,20 +161,20 @@ const CipherBackground = ({
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (hover && distance < influenceRadius) {
-        const force = (influenceRadius - distance) / influenceRadius;
+        const force = (influenceRadius - distance) / influenceRadius - 0.1;
         const fx = dx / distance || 0;
         const fy = dy / distance || 0;
 
-        point.vx += fx * force * 0.2;
-        point.vy += fy * force * 0.2;
+        point.vx += fx * force * 0.05;
+        point.vy += fy * force * 0.05;
 
         if (Math.random() < 0.1) point.character = getRandomCharacter();
         point.color = distance < influenceRadius * 0.5 ? colors.primary : colors.secondary;
-        point.opacity = Math.min(1, point.opacity + 0.05);
-        point.size = fontSize * (1 + force * 0.5);
+        point.opacity = Math.min(1, point.opacity + 0.1);
+        point.size = fontSize * (1 + force * 0.2);
       } else {
-        point.vx += (point.originalX - point.x) * 0.05;
-        point.vy += (point.originalY - point.y) * 0.05;
+        point.vx += (point.originalX - point.x) * 0.01;
+        point.vy += (point.originalY - point.y) * 0.01;
 
         if (Math.random() < 0.005) point.character = getRandomCharacter();
 

@@ -1,13 +1,13 @@
-import localFont from "next/font/local";
-import { DM_Mono, JetBrains_Mono } from "next/font/google";
+
+import { Urbanist } from "next/font/google";
 import "./globals.css";
 import { Web3Provider } from "@/provider/web3-provider";
 import { ChainBalanceProvider } from "@/provider/balance-provider";
 import Header from "@/components/header";
 
-const fontJetBrainsMono = JetBrains_Mono({
+const fontUrbanist = Urbanist({
   subsets: ["latin"],
-  variable: "--font-jet-brains-mono",
+  variable: "--font-urbanist",
   weight: ["300", "400", "500"],
   display: "swap",
 })
@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${fontJetBrainsMono.variable} font-jet-brains-mono antialiased`}
+        className={`${fontUrbanist.variable} font-urbanist antialiased`}
       >
         <Web3Provider>
           <ChainBalanceProvider>

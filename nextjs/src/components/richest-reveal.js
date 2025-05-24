@@ -5,6 +5,7 @@ import { useAccount, usePublicClient, useWriteContract, useWatchContractEvent } 
 import { Trophy } from "lucide-react";
 import { RICHEE_CONTRACT_ADDRESS, RICHEE_ABI } from "@/utils/config";
 import Card from "@/components/ui/card";
+import TextScramble from "@/components/text-scramble";
 
 const RichestReveal = () => {
   const { address } = useAccount();
@@ -13,9 +14,51 @@ const RichestReveal = () => {
   const [richestAddress, setRichestAddress] = useState(null);
   const [isFinalized, setIsFinalized] = useState(false);
   const [allSubmitted, setAllSubmitted] = useState(false);
+  const [participants, setParticipants] = useState({
+    alice: null,
+    bob: null,
+    eve: null
+  });
+  const [showScramble, setShowScramble] = useState(false);
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+
+  // Fetch participant addresses
+  const fetchParticipants = async () => {
+    try {
+      const [alice, bob, eve] = await Promise.all([
+        publicClient.readContract({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "alice",
+        }),
+        publicClient.readContract({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "bob",
+        }),
+        publicClient.readContract({
+          address: RICHEE_CONTRACT_ADDRESS,
+          abi: RICHEE_ABI,
+          functionName: "eve",
+        })
+      ]);
+
+      setParticipants({ alice, bob, eve });
+    } catch (error) {
+      console.error("Error fetching participants:", error);
+    }
+  };
+
+  // Get participant name from address
+  const getParticipantName = (address) => {
+    if (!address) return "Unknown";
+    if (address.toLowerCase() === participants.alice?.toLowerCase()) return "Alice";
+    if (address.toLowerCase() === participants.bob?.toLowerCase()) return "Bob";
+    if (address.toLowerCase() === participants.eve?.toLowerCase()) return "Eve";
+    return "Unknown";
+  };
 
   // Watch for RichestFound event
   useWatchContractEvent({
@@ -30,6 +73,7 @@ const RichestReveal = () => {
         if (richest) {
           setRichestAddress(richest);
           setIsFinalized(true);
+          setShowScramble(true);
         }
       }
     },
@@ -81,6 +125,7 @@ const RichestReveal = () => {
         if (logs.length > 0) {
           const richest = logs[logs.length - 1].args.richest;
           setRichestAddress(richest);
+          setShowScramble(true);
         }
       }
     } catch (error) {
@@ -151,6 +196,7 @@ const RichestReveal = () => {
           if (logs.length > 0) {
             const richest = logs[logs.length - 1].args.richest;
             setRichestAddress(richest);
+            setShowScramble(true);
           }
         } else {
           setTimeout(checkResult, 2000); // Poll every 2 seconds
@@ -164,6 +210,7 @@ const RichestReveal = () => {
   };
 
   useEffect(() => {
+    fetchParticipants();
     checkAllSubmitted();
     checkFinalized();
     // Set up polling interval
@@ -172,10 +219,11 @@ const RichestReveal = () => {
       checkFinalized();
     }, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <Card className="bg-gray-800/70">
+    <Card className="bg-gray-800/70 h-fit">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold flex items-center">
           <Trophy className="mr-3 text-yellow-400" />
@@ -193,9 +241,26 @@ const RichestReveal = () => {
         {isFinalized ? (
           <div className="text-center">
             <p className="text-gray-300 mb-2">The richest participant is:</p>
-            <p className="text-xl font-semibold text-yellow-400">
-              {richestAddress === address ? "You!" : richestAddress}
-            </p>
+            <div className="space-y-2">
+              {showScramble ? (
+                <TextScramble 
+                  scrambleOnMount={true}
+                  scrambleCount={10}
+                  scrambleDelay={100}
+                >
+                  <p className="text-xl font-semibold text-yellow-400">
+                    {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
+                  </p>
+                </TextScramble>
+              ) : (
+                <p className="text-xl font-semibold text-yellow-400">
+                  {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
+                </p>
+              )}
+              <p className="text-sm text-gray-400">
+                {richestAddress}
+              </p>
+            </div>
           </div>
         ) : (
           <div className="text-center">

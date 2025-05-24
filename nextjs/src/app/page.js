@@ -18,7 +18,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-900/0 text-white">
-      <CipherBackground />
+      <CipherBackground hover={true} />
       <div className="max-w-4xl mx-auto p-6">
         {isConnected ? (
           <div className="space-y-8">

@@ -1,9 +1,9 @@
 # Richee Rich - Millionaire's Dilemma on Inco
 
-
 A decentralized application that allows participants to privately compare their wealth using Inco's Lightning encrypted types. The application ensures that individual wealth values remain private while still determining who is the richest participant.
 
-Youtube: https://youtu.be/xtMg43iMylk
+Demo: https://youtu.be/xtMg43iMylk
+
 ## Overview
 
 Richee Rich implements the Millionaire's Dilemma problem using Inco's Lightning encrypted types. It allows three participants (Alice, Bob, and Eve) to submit their encrypted wealth values and then determines who is the richest without revealing individual amounts.
@@ -165,7 +165,7 @@ const richestAddress = getAddress('0x' + decryptedRichest.value.toString(16).pad
 ## Setup and Usage
 
 ### Prerequisites
-- Node.js (v16 or higher)
+- Node.js (v18 or higher)
 - pnpm
 - MetaMask or compatible Web3 wallet
 - Base Sepolia testnet ETH
@@ -173,8 +173,8 @@ const richestAddress = getAddress('0x' + decryptedRichest.value.toString(16).pad
 ### Installation
 ```bash
 # Clone and install dependencies
-git clone <repository-url>
-cd inco
+git clone https://github.com/0xmihirsahu/rich-ee-rich.git
+cd rich-ee-rich
 
 # Install contract dependencies
 cd contract
@@ -182,17 +182,24 @@ pnpm install
 
 # Install web application dependencies
 cd ../nextjs
-pnpm install
+npm install
 ```
 
 ### Configuration
 ```bash
+# In contract directory
+cp .env.example .env.local
+# Update environment variables
+PRIVATE_KEY_ANVIL="your_anvil_private_key"
+PRIVATE_KEY_BASE_SEPOLIA="your_base_sepolia_private_key"
+BASESCAN_API_KEY="your_basescan_api_key"
+
 # In nextjs directory
 cp .env.example .env.local
 
 # Update environment variables
-NEXT_PUBLIC_RICHEE_CONTRACT_ADDRESS=0x...
-NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://...
+NEXT_PUBLIC_RICHEE_CONTRACT_ADDRESS="your_deployed_contract_address"
+NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL="https://sepolia.base.org"
 ```
 
 ### Running the Application
@@ -201,9 +208,18 @@ NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://...
 cd contract
 pnpm hardhat test --network baseSepolia
 
+# Deploy contract
+pnpm hardhat run scripts/deployRichee.ts --network baseSepolia
+
+# Verify contract
+npx hardhat verify --network baseSepolia <contract_address> "alice_address" "bob_address" "eve_address"
+
+# Update the contract address in nextjs/.env.local
+NEXT_PUBLIC_RICHEE_CONTRACT_ADDRESS="your_deployed_contract_address"
+
 # Run web application
 cd ../nextjs
-pnpm dev
+npm run dev
 ```
 
 ## Contributing

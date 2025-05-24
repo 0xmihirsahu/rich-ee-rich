@@ -1,5 +1,4 @@
-export const RICHEE_CONTRACT_ADDRESS =
-  "0x1723ab60c0eb85bbe5f186b13e3d040fff04008a"; // Replace with actual contract address
+export const RICHEE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_RICHEE_CONTRACT_ADDRESS; // Replace with actual contract address
 
 export const RICHEE_ABI = [
   {

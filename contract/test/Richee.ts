@@ -170,6 +170,8 @@ describe("Richee Tests", function () {
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
       const blockNumber = receipt.blockNumber;
 
+      console.log("Transaction block number:", blockNumber);
+
       const logs = await publicClient.getLogs({
         address: contractAddress,
         event: {
@@ -187,29 +189,48 @@ describe("Richee Tests", function () {
         toBlock: blockNumber,
       });
 
-      expect(logs.length).to.be.greaterThan(0);
-      const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress as HexString;
+      expect(logs.length).to.be.greaterThan(0, "No EncryptedRichestAddress event found");
+      const encryptedRichest = logs[logs.length - 1].args?.encryptedAddress;
       console.log("Encrypted richest address:", encryptedRichest);
 
-      const reencryptor = await incoConfig.getReencryptor(walletClient);
+      // Get reencryptor for Alice since she's the one who started the comparison
+      const reencryptor = await incoConfig.getReencryptor(namedWallets.bob);
       console.log("Reencryptor obtained");
       
-      const decryptedRichest = reencryptor({handle: encryptedRichest});
-      console.log("Decrypted result:", decryptedRichest);
-      
-      if (!decryptedRichest || !decryptedRichest.value) {
-        throw new Error("Decryption failed: No value returned");
+      try {
+        const decryptedRichest = await reencryptor({handle: encryptedRichest});
+        console.log("Decrypted result:", decryptedRichest);
+        
+        if (!decryptedRichest || !decryptedRichest.value) {
+          throw new Error("Decryption failed: No value returned");
+        }
+
+        const decryptedRichestString = decryptedRichest.value.toString();
+        console.log("Decrypted string:", decryptedRichestString);
+
+        // Convert the decrypted string to an address
+        const hexAddress = BigInt(decryptedRichestString).toString(16).padStart(40, '0');
+        const decryptedAddress = getAddress('0x' + hexAddress);
+        console.log("Decrypted address:", decryptedAddress);
+        console.log("Expected address (Bob):", namedWallets.bob.account?.address);
+        
+        // Verify the decrypted address matches Bob's address (who has the highest amount - 200)
+        expect(decryptedAddress.toLowerCase()).to.equal(
+          namedWallets.bob.account?.address.toLowerCase(),
+          "Decrypted address does not match Bob's address"
+        );
+
+        // Additional verification - check if the contract is finalized
+        const isFinalized = await publicClient.readContract({
+          address: contractAddress,
+          abi: contractAbi.abi,
+          functionName: "isFinalized",
+        });
+        expect(isFinalized).to.be.true;
+      } catch (error) {
+        console.error("Decryption error details:", error);
+        throw error;
       }
-
-      const decryptedRichestString = decryptedRichest.value.toString();
-      console.log("Decrypted string:", decryptedRichestString);
-
-      // Convert the decrypted string to an address
-      const decryptedAddress = getAddress(decryptedRichestString);
-      console.log("Decrypted address:", decryptedAddress);
-      console.log("Expected address:", namedWallets.bob.account?.address);
-      
-      expect(decryptedAddress).to.equal(namedWallets.bob.account?.address);
     });
   });
 });

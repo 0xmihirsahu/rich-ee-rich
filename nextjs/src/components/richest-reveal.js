@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount, usePublicClient, useWriteContract, useWatchContractEvent } from "wagmi";
 import { Trophy } from "lucide-react";
 import { RICHEE_CONTRACT_ADDRESS, RICHEE_ABI } from "@/utils/config";
 import Card from "@/components/ui/card";
 import TextScramble from "@/components/text-scramble";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const RichestReveal = () => {
   const { address } = useAccount();
@@ -20,6 +21,8 @@ const RichestReveal = () => {
     eve: null
   });
   const [showScramble, setShowScramble] = useState(false);
+  const [displayText, setDisplayText] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -209,6 +212,24 @@ const RichestReveal = () => {
     checkResult();
   };
 
+  // Function to type out the result message
+  const typeResultMessage = useCallback(() => {
+    const isRichest = richestAddress?.toLowerCase() === address?.toLowerCase();
+    const text = isRichest ? "YOU ARE THE RICHEST!" : "YOU'RE BROKE!";
+    let currentIndex = 0;
+
+    const typeInterval = setInterval(() => {
+      if (currentIndex <= text.length) {
+        setDisplayText(text.slice(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(typeInterval);
+      }
+    }, 100);
+
+    return () => clearInterval(typeInterval);
+  }, [richestAddress, address]);
+
   useEffect(() => {
     fetchParticipants();
     checkAllSubmitted();
@@ -222,70 +243,166 @@ const RichestReveal = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (isFinalized && richestAddress) {
+      setShowModal(true);
+      const cleanup = typeResultMessage();
+      return cleanup;
+    }
+  }, [isFinalized, richestAddress, typeResultMessage]);
+
+  const handleClose = useCallback(() => {
+    setShowModal(false);
+  }, []);
+
   return (
-    <Card className="bg-gray-800/70 h-fit">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold flex items-center">
-          <Trophy className="mr-3 text-yellow-400" />
-          Richest Participant
-        </h2>
-      </div>
+    <>
+      <Card className="bg-gray-800/70 h-fit">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold flex items-center">
+            <Trophy className="mr-3 text-yellow-400" />
+            Richest Participant
+          </h2>
+        </div>
 
-      <div className="space-y-4">
-        {error && (
-          <div className="bg-red-900/20 border border-red-500 text-red-400 p-3 rounded-none text-center">
-            {error}
-          </div>
-        )}
+        <div className="space-y-4">
+          {error && (
+            <div className="bg-red-900/20 border border-red-500 text-red-400 p-3 rounded-none text-center">
+              {error}
+            </div>
+          )}
 
-        {isFinalized ? (
-          <div className="text-center">
-            <p className="text-gray-300 mb-2">The richest participant is:</p>
-            <div className="space-y-2">
-              {showScramble ? (
-                <TextScramble 
-                  scrambleOnMount={true}
-                  scrambleCount={10}
-                  scrambleDelay={100}
-                >
+          {isFinalized ? (
+            <div className="text-center">
+              <div className="space-y-2">
+                <p className="text-gray-300 mb-2">The richest participant is:</p>
+                {showScramble ? (
+                  <TextScramble 
+                    scrambleOnMount={true}
+                    scrambleCount={10}
+                    scrambleDelay={100}
+                  >
+                    <p className="text-xl font-semibold text-yellow-400">
+                      {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
+                    </p>
+                  </TextScramble>
+                ) : (
                   <p className="text-xl font-semibold text-yellow-400">
                     {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
                   </p>
-                </TextScramble>
-              ) : (
-                <p className="text-xl font-semibold text-yellow-400">
-                  {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
+                )}
+                <p className="text-sm text-gray-400">
+                  {richestAddress}
                 </p>
-              )}
-              <p className="text-sm text-gray-400">
-                {richestAddress}
-              </p>
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="mt-4 w-full py-3 bg-yellow-600 text-white rounded-none hover:bg-yellow-700 transition-colors"
+              >
+                Show Full Result
+              </button>
             </div>
-          </div>
-        ) : (
-          <div className="text-center">
-            <p className="text-gray-300 mb-4">
-              {allSubmitted
-                ? "All participants have submitted their wealth. Ready to reveal the richest!"
-                : "Waiting for all participants to submit their wealth..."}
-            </p>
-            <button
-              onClick={startComparison}
-              disabled={!allSubmitted || isLoading}
-              className="w-full py-3 bg-yellow-600 text-white rounded-none hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          ) : (
+            <div className="text-center">
+              <p className="text-gray-300 mb-4">
+                {allSubmitted
+                  ? "All participants have submitted their wealth. Ready to reveal the richest!"
+                  : "Waiting for all participants to submit their wealth..."}
+              </p>
+              <button
+                onClick={startComparison}
+                disabled={!allSubmitted || isLoading}
+                className="w-full py-3 bg-yellow-600 text-white rounded-none hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  </div>
+                ) : (
+                  "Reveal Richest"
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-50 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 pointer-events-none crt"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.1) 2px, rgba(0,255,0,0.1) 4px)'
+              }}
+            />
+
+            <motion.div 
+              className="z-10 w-full max-w-5xl py-8 sm:py-12 px-2 sm:px-4 relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
             >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ 
+                  opacity: [0, 1, 0.5, 1],
+                  textShadow: [
+                    "0 0 5px #0f0",
+                    "0 0 20px #0f0",
+                    "0 0 5px #0f0",
+                    "0 0 2px #0f0"
+                  ]
+                }}
+                transition={{ duration: 2.7, repeat: Infinity }}
+                className="text-xl sm:text-2xl md:text-3xl font-mono font-bold mb-4 sm:mb-8 text-center text-green-500 min-h-[48px]"
+              >
+                <TextScramble scrambleOnMount={true} scrambleCount={10} scrambleDelay={100}>
+                  {displayText}
+                </TextScramble>
+              </motion.div>
+
+              <div className="bg-gray-800/70 p-6 rounded-none text-center">
+                <p className="text-gray-300 mb-4">The richest participant is:</p>
+                <div className="space-y-2">
+                  {showScramble ? (
+                    <TextScramble 
+                      scrambleOnMount={true}
+                      scrambleCount={10}
+                      scrambleDelay={100}
+                    >
+                      <p className="text-xl font-semibold text-yellow-400">
+                        {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
+                      </p>
+                    </TextScramble>
+                  ) : (
+                    <p className="text-xl font-semibold text-yellow-400">
+                      {richestAddress === address ? "You!" : getParticipantName(richestAddress)}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-400">
+                    {richestAddress}
+                  </p>
                 </div>
-              ) : (
-                "Reveal Richest"
-              )}
-            </button>
+              </div>
+
+              <motion.button
+                onClick={handleClose}
+                className="mt-4 sm:mt-6 md:mt-8 px-3 sm:px-4 py-2 font-mono text-sm sm:text-base text-green-500 border border-green-500/50 hover:bg-green-500/20 transition-colors mx-auto block rounded-none"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                [CLOSE]
+              </motion.button>
+            </motion.div>
           </div>
         )}
-      </div>
-    </Card>
+      </AnimatePresence>
+    </>
   );
 };
 

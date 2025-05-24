@@ -1,7 +1,9 @@
 # Richee Rich - Millionaire's Dilemma on Inco
 
+
 A decentralized application that allows participants to privately compare their wealth using Inco's Lightning encrypted types. The application ensures that individual wealth values remain private while still determining who is the richest participant.
 
+Youtube: https://youtu.be/xtMg43iMylk
 ## Overview
 
 Richee Rich implements the Millionaire's Dilemma problem using Inco's Lightning encrypted types. It allows three participants (Alice, Bob, and Eve) to submit their encrypted wealth values and then determines who is the richest without revealing individual amounts.

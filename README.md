@@ -64,6 +64,8 @@ A Next.js application that provides the user interface and handles blockchain in
    - Type definitions
 
 ## ⚙️ Application Flow
+![image](https://github.com/user-attachments/assets/50106512-35fe-4722-ab56-8956f0ee8db9)
+
 
 ### 1. Initial Setup
 ```solidity
